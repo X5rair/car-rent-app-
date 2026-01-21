@@ -17,11 +17,40 @@ extension EnvironmentValues {
     }
 }
 
+enum AppLanguage: String, CaseIterable, Identifiable {
+    case system = "system"
+    case ru = "ru"
+    case en = "en"
+
+    var id: String { rawValue }
+
+    var displayName: String {
+        switch self {
+        case .system: return "Системный"
+        case .ru: return "Русский"
+        case .en: return "English"
+        }
+    }
+
+    var locale: Locale? {
+        switch self {
+        case .system: return nil
+        case .ru: return Locale(identifier: "ru")
+        case .en: return Locale(identifier: "en")
+        }
+    }
+}
+
 struct ContentView: View {
     @State private var isLoggedIn = false
     @State private var showAuthSheet = false
     @StateObject private var wallet = WalletStore()
     @AppStorage("isDarkMode") private var isDarkMode = false
+    @AppStorage("appLanguage") private var appLanguageRaw: String = AppLanguage.system.rawValue
+
+    private var currentLanguage: AppLanguage {
+        AppLanguage(rawValue: appLanguageRaw) ?? .system
+    }
 
     var body: some View {
         TabView {
@@ -73,6 +102,7 @@ struct ContentView: View {
         .environmentObject(wallet)
         .environment(\.isLoggedIn, isLoggedIn)
         .preferredColorScheme(isDarkMode ? .dark : .light)
+        .environment(\.locale, currentLanguage.locale ?? Locale.autoupdatingCurrent)
     }
 }
 
@@ -391,8 +421,13 @@ struct SettingsView: View {
     @EnvironmentObject private var wallet: WalletStore
     @AppStorage("isDarkMode") private var isDarkMode = false
     @AppStorage("notificationsEnabled") private var notificationsEnabled = true
+    @AppStorage("appLanguage") private var appLanguageRaw: String = AppLanguage.system.rawValue
     @State private var name: String = ""
     @State private var email: String = ""
+
+    private var language: AppLanguage {
+        AppLanguage(rawValue: appLanguageRaw) ?? .system
+    }
 
     var body: some View {
         Form {
@@ -416,6 +451,11 @@ struct SettingsView: View {
             Section("Предпочтения") {
                 Toggle("Тёмная тема", isOn: $isDarkMode)
                 Toggle("Уведомления", isOn: $notificationsEnabled)
+                Picker("Язык", selection: $appLanguageRaw) {
+                    ForEach(AppLanguage.allCases) { lang in
+                        Text(lang.displayName).tag(lang.rawValue)
+                    }
+                }
             }
 
             Section {
