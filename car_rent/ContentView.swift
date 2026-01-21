@@ -48,6 +48,15 @@ struct ContentView: View {
             .tabItem {
                 Label("Баланс", systemImage: "creditcard")
             }
+
+            NavigationStack {
+                SettingsView()
+                    .navigationTitle("Настройки")
+                    .navigationBarTitleDisplayMode(.inline)
+            }
+            .tabItem {
+                Label("Настройки", systemImage: "gearshape")
+            }
         }
         .environmentObject(wallet)
     }
@@ -349,6 +358,56 @@ struct MainMapView: View {
             .padding()
         }
     }
+}
+
+struct SettingsView: View {
+    @EnvironmentObject private var wallet: WalletStore
+    @AppStorage("isDarkMode") private var isDarkMode = false
+    @AppStorage("notificationsEnabled") private var notificationsEnabled = true
+    @State private var name: String = ""
+    @State private var email: String = ""
+
+    var body: some View {
+        Form {
+            Section("Профиль") {
+                TextField("Имя", text: $name)
+                TextField("E‑mail", text: $email)
+                    .keyboardType(.emailAddress)
+                    .textInputAutocapitalization(.none)
+                    .autocorrectionDisabled()
+            }
+
+            Section("Кошелёк") {
+                HStack {
+                    Text("Баланс")
+                    Spacer()
+                    Text(NumberFormatter.kzt.string(from: wallet.balanceKZT as NSDecimalNumber) ?? "")
+                        .fontWeight(.semibold)
+                }
+            }
+
+            Section("Предпочтения") {
+                Toggle("Тёмная тема", isOn: $isDarkMode)
+                Toggle("Уведомления", isOn: $notificationsEnabled)
+            }
+
+            Section {
+                Button(role: .destructive) {} label: {
+                    Text("Выйти")
+                }
+            }
+        }
+    }
+}
+
+private extension NumberFormatter {
+    static let kzt: NumberFormatter = {
+        let f = NumberFormatter()
+        f.numberStyle = .currency
+        f.currencyCode = "KZT"
+        f.maximumFractionDigits = 0
+        return f
+    }()
 }
 
 #Preview {
