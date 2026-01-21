@@ -603,23 +603,76 @@ struct BalanceView: View {
     }
 }
 
+// MARK: - Car map demo
+
+struct Car: Identifiable {
+    let id: UUID
+    let title: String
+    let plate: String
+    let tariffPerMinuteKZT: Int
+    let coordinate: CLLocationCoordinate2D
+
+    init(id: UUID = UUID(), title: String, plate: String, tariffPerMinuteKZT: Int, coordinate: CLLocationCoordinate2D) {
+        self.id = id
+        self.title = title
+        self.plate = plate
+        self.tariffPerMinuteKZT = tariffPerMinuteKZT
+        self.coordinate = coordinate
+    }
+}
+
 struct MainMapView: View {
     private let almaty = CLLocationCoordinate2D(latitude: 43.238949, longitude: 76.889709)
     private let newYork = CLLocationCoordinate2D(latitude: 40.7128, longitude: -74.0060)
 
     @State private var region = MKCoordinateRegion(
         center: CLLocationCoordinate2D(latitude: 43.238949, longitude: 76.889709),
-        span: MKCoordinateSpan(latitudeDelta: 4.0, longitudeDelta: 4.0)
+        span: MKCoordinateSpan(latitudeDelta: 0.08, longitudeDelta: 0.08)
     )
+
+    // Один пример автомобиля в Алматы
+    @State private var cars: [Car] = [
+        Car(
+            title: "Kia Rio",
+            plate: "123 ABC 02",
+            tariffPerMinuteKZT: 60,
+            coordinate: CLLocationCoordinate2D(latitude: 43.2389, longitude: 76.8895)
+        )
+    ]
+
+    @State private var selectedCar: Car?
 
     var body: some View {
         ZStack(alignment: .topTrailing) {
-            Map(coordinateRegion: $region, interactionModes: .all, showsUserLocation: false, userTrackingMode: nil)
-                .ignoresSafeArea(edges: .bottom)
+            Map(coordinateRegion: $region, interactionModes: .all, showsUserLocation: false, userTrackingMode: nil, annotationItems: cars) { car in
+                MapAnnotation(coordinate: car.coordinate) {
+                    VStack(spacing: 4) {
+                        Button {
+                            selectedCar = car
+                        } label: {
+                            ZStack {
+                                Circle()
+                                    .fill(Color.accentColor)
+                                    .frame(width: 34, height: 34)
+                                Image(systemName: "car.fill")
+                                    .foregroundStyle(.white)
+                            }
+                        }
+                        .buttonStyle(.plain)
+
+                        Text(car.title)
+                            .font(.caption2)
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 2)
+                            .background(.ultraThinMaterial, in: Capsule())
+                    }
+                }
+            }
+            .ignoresSafeArea(edges: .bottom)
 
             VStack(spacing: 8) {
                 Button {
-                    region = MKCoordinateRegion(center: almaty, span: MKCoordinateSpan(latitudeDelta: 1.0, longitudeDelta: 1.0))
+                    region = MKCoordinateRegion(center: almaty, span: MKCoordinateSpan(latitudeDelta: 0.08, longitudeDelta: 0.08))
                 } label: {
                     Text("Алматы")
                         .font(.footnote)
@@ -629,7 +682,7 @@ struct MainMapView: View {
                 }
 
                 Button {
-                    region = MKCoordinateRegion(center: newYork, span: MKCoordinateSpan(latitudeDelta: 1.0, longitudeDelta: 1.0))
+                    region = MKCoordinateRegion(center: newYork, span: MKCoordinateSpan(latitudeDelta: 0.08, longitudeDelta: 0.08))
                 } label: {
                     Text("Нью‑Йорк")
                         .font(.footnote)
@@ -639,6 +692,70 @@ struct MainMapView: View {
                 }
             }
             .padding()
+        }
+        .sheet(item: $selectedCar) { car in
+            CarDetailsView(car: car)
+                .presentationDetents([.medium])
+        }
+    }
+}
+
+struct CarDetailsView: View {
+    let car: Car
+
+    var body: some View {
+        NavigationStack {
+            VStack(alignment: .leading, spacing: 16) {
+                HStack(spacing: 12) {
+                    ZStack {
+                        RoundedRectangle(cornerRadius: 12)
+                            .fill(Color.accentColor.opacity(0.15))
+                            .frame(width: 64, height: 64)
+                        Image(systemName: "car.fill")
+                            .font(.system(size: 28))
+                            .foregroundStyle(Color.accentColor)
+                    }
+
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text(car.title)
+                            .font(.title3).bold()
+                        Text(car.plate)
+                            .foregroundStyle(.secondary)
+                    }
+                    Spacer()
+                }
+
+                HStack {
+                    Image(systemName: "tenge.sign.circle")
+                        .foregroundStyle(.secondary)
+                    Text("Тариф: \(car.tariffPerMinuteKZT) ₸/мин")
+                }
+
+                HStack {
+                    Image(systemName: "location")
+                        .foregroundStyle(.secondary)
+                    Text("Координаты: \(String(format: "%.4f", car.coordinate.latitude)), \(String(format: "%.4f", car.coordinate.longitude))")
+                        .lineLimit(1)
+                        .truncationMode(.tail)
+                }
+
+                Spacer()
+
+                Button {
+                    // В демо просто показать, что действие сработало
+                } label: {
+                    Text("Забронировать")
+                        .fontWeight(.semibold)
+                        .frame(maxWidth: .infinity)
+                        .padding()
+                        .background(Color.accentColor)
+                        .foregroundStyle(.white)
+                        .clipShape(RoundedRectangle(cornerRadius: 14))
+                }
+            }
+            .padding()
+            .navigationTitle("Автомобиль")
+            .navigationBarTitleDisplayMode(.inline)
         }
     }
 }
