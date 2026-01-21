@@ -1,6 +1,7 @@
 import SwiftUI
 import MapKit
 import Combine
+import CryptoKit
 
 final class WalletStore: ObservableObject {
     @Published var balanceKZT: Decimal = 0 {
@@ -72,8 +73,122 @@ enum AppLanguage: String, CaseIterable, Identifiable {
     }
 }
 
+// MARK: - Auth
+
+struct UserRecord: Codable, Equatable {
+    var name: String
+    var email: String
+    var passwordHash: String
+}
+
+final class AuthStore: ObservableObject {
+    @Published private(set) var users: [String: UserRecord] = [:] // key = lowercased email
+    @AppStorage("currentUserEmail") private var currentUserEmail: String = ""
+    @Published private(set) var isLoggedIn: Bool = false
+    @Published private(set) var currentUser: UserRecord?
+
+    private let usersKey = "auth.users.json"
+
+    init() {
+        loadUsers()
+        restoreSession()
+    }
+
+    func register(name: String, email: String, password: String) throws {
+        let emailKey = emailKeyFor(email)
+        guard users[emailKey] == nil else {
+            throw AuthError.emailAlreadyExists
+        }
+        let record = UserRecord(name: name, email: emailKey, passwordHash: Self.hash(password))
+        users[emailKey] = record
+        saveUsers()
+        // Автовход после регистрации
+        setLoggedIn(user: record)
+    }
+
+    func login(email: String, password: String) throws {
+        let emailKey = emailKeyFor(email)
+        guard let record = users[emailKey] else {
+            throw AuthError.userNotFound
+        }
+        guard record.passwordHash == Self.hash(password) else {
+            throw AuthError.wrongPassword
+        }
+        setLoggedIn(user: record)
+    }
+
+    func logout() {
+        currentUserEmail = ""
+        currentUser = nil
+        isLoggedIn = false
+    }
+
+    // MARK: - Private
+
+    private func setLoggedIn(user: UserRecord) {
+        currentUser = user
+        currentUserEmail = user.email
+        isLoggedIn = true
+        // Сохраним имя для SettingsView совместимости
+        UserDefaults.standard.set(user.name, forKey: "userName")
+    }
+
+    private func emailKeyFor(_ email: String) -> String {
+        email.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+    }
+
+    private func restoreSession() {
+        guard !currentUserEmail.isEmpty, let user = users[currentUserEmail] else {
+            isLoggedIn = false
+            currentUser = nil
+            return
+        }
+        currentUser = user
+        isLoggedIn = true
+        // синхронизируем имя
+        UserDefaults.standard.set(user.name, forKey: "userName")
+    }
+
+    private func loadUsers() {
+        if let data = UserDefaults.standard.data(forKey: usersKey) {
+            if let decoded = try? JSONDecoder().decode([String: UserRecord].self, from: data) {
+                users = decoded
+            }
+        }
+    }
+
+    private func saveUsers() {
+        if let data = try? JSONEncoder().encode(users) {
+            UserDefaults.standard.set(data, forKey: usersKey)
+        }
+    }
+
+    static func hash(_ password: String) -> String {
+        let data = Data(password.utf8)
+        let digest = SHA256.hash(data: data)
+        return digest.compactMap { String(format: "%02x", $0) }.joined()
+    }
+
+    enum AuthError: LocalizedError {
+        case emailAlreadyExists
+        case userNotFound
+        case wrongPassword
+
+        var errorDescription: String? {
+            switch self {
+            case .emailAlreadyExists:
+                return "Пользователь с таким e‑mail уже существует."
+            case .userNotFound:
+                return "Пользователь с таким e‑mail не найден."
+            case .wrongPassword:
+                return "Неверный пароль."
+            }
+        }
+    }
+}
+
 struct ContentView: View {
-    @State private var isLoggedIn = false
+    @StateObject private var auth = AuthStore()
     @State private var showAuthSheet = false
     @StateObject private var wallet = WalletStore()
     @AppStorage("isDarkMode") private var isDarkMode = false
@@ -104,9 +219,9 @@ struct ContentView: View {
                             .navigationBarTitleDisplayMode(.inline)
                             .toolbar {
                                 ToolbarItem(placement: .topBarTrailing) {
-                                    if isLoggedIn {
+                                    if auth.isLoggedIn {
                                         Button("Выйти") {
-                                            isLoggedIn = false
+                                            auth.logout()
                                         }
                                     } else {
                                         Button("Войти/Регистрация") {
@@ -116,9 +231,10 @@ struct ContentView: View {
                                 }
                             }
                             .sheet(isPresented: $showAuthSheet) {
-                                LoginSheetView(isLoggedIn: $isLoggedIn) {
+                                LoginSheetView(isLoggedIn: .constant(false)) {
                                     showAuthSheet = false
                                 }
+                                .environmentObject(auth)
                             }
                     }
                     .tabItem {
@@ -146,7 +262,8 @@ struct ContentView: View {
             }
         }
         .environmentObject(wallet)
-        .environment(\.isLoggedIn, isLoggedIn)
+        .environmentObject(auth)
+        .environment(\.isLoggedIn, auth.isLoggedIn)
         .environment(\.showAuth, { showAuthSheet = true })
         .preferredColorScheme(isDarkMode ? .dark : .light)
         .environment(\.locale, currentLanguage.locale ?? Locale.autoupdatingCurrent)
@@ -186,9 +303,11 @@ struct SplashView: View {
 }
 
 struct LoginSheetView: View {
+    // isLoggedIn биндинг оставлен для совместимости сигнатуры, но не используется — авторизация идёт через AuthStore.
     @Binding var isLoggedIn: Bool
     var onClose: () -> Void
 
+    @EnvironmentObject private var auth: AuthStore
     @AppStorage("userName") private var storedUserName: String = ""
 
     @State private var isSignUp = false
@@ -349,18 +468,24 @@ struct LoginSheetView: View {
 
         isLoading = true
 
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) {
-            isLoading = false
-            isLoggedIn = true
-
-            if isSignUp {
-                storedUserName = name.trimmingCharacters(in: .whitespacesAndNewlines)
-                successMessage = "Регистрация успешна! Добро пожаловать, \(storedUserName.isEmpty ? "водитель" : storedUserName)."
-            } else {
-                successMessage = "Вход выполнен!"
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
+            defer { isLoading = false }
+            do {
+                if isSignUp {
+                    try auth.register(name: name.trimmingCharacters(in: .whitespacesAndNewlines),
+                                      email: email,
+                                      password: password)
+                    storedUserName = auth.currentUser?.name ?? ""
+                    successMessage = "Регистрация успешна! Добро пожаловать, \(storedUserName.isEmpty ? "водитель" : storedUserName)."
+                } else {
+                    try auth.login(email: email, password: password)
+                    storedUserName = auth.currentUser?.name ?? ""
+                    successMessage = "Вход выполнен!"
+                }
+                onClose()
+            } catch {
+                errorMessage = (error as? LocalizedError)?.errorDescription ?? "Ошибка входа/регистрации."
             }
-
-            onClose()
         }
     }
 
@@ -522,6 +647,7 @@ struct SettingsView: View {
     @EnvironmentObject private var wallet: WalletStore
     @Environment(\.isLoggedIn) private var isLoggedIn
     @Environment(\.showAuth) private var showAuth
+    @EnvironmentObject private var auth: AuthStore
     @AppStorage("isDarkMode") private var isDarkMode = false
     @AppStorage("notificationsEnabled") private var notificationsEnabled = true
     @AppStorage("appLanguage") private var appLanguageRaw: String = AppLanguage.system.rawValue
@@ -535,6 +661,12 @@ struct SettingsView: View {
                         Text("Имя")
                         Spacer()
                         Text(storedUserName.isEmpty ? "—" : storedUserName)
+                            .foregroundStyle(.secondary)
+                    }
+                    HStack {
+                        Text("E‑mail")
+                        Spacer()
+                        Text(auth.currentUser?.email ?? "—")
                             .foregroundStyle(.secondary)
                     }
                 }
@@ -558,15 +690,10 @@ struct SettingsView: View {
                     }
                 }
 
-                Section("Управление") {
-                    Button("Скрыть клавиатуру") {
-                        // Глобальный способ скрыть — отправляем resignFirstResponder
-                        UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
-                    }
-                }
-
                 Section {
-                    Button(role: .destructive) {} label: {
+                    Button(role: .destructive) {
+                        auth.logout()
+                    } label: {
                         Text("Выйти")
                     }
                 }
