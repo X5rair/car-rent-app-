@@ -3,7 +3,27 @@ import MapKit
 import Combine
 
 final class WalletStore: ObservableObject {
-    @Published var balanceKZT: Decimal = 0
+    @Published var balanceKZT: Decimal = 0 {
+        didSet { saveBalance() }
+    }
+
+    init() {
+        loadBalance()
+    }
+
+    private func loadBalance() {
+        let saved = UserDefaults.standard.string(forKey: "wallet.balanceKZT") ?? "0"
+        if let decimal = Decimal(string: saved) {
+            balanceKZT = decimal
+        } else {
+            balanceKZT = 0
+        }
+    }
+
+    private func saveBalance() {
+        let stringValue = NSDecimalNumber(decimal: balanceKZT).stringValue
+        UserDefaults.standard.set(stringValue, forKey: "wallet.balanceKZT")
+    }
 }
 
 private struct IsLoggedInKey: EnvironmentKey {
@@ -14,6 +34,17 @@ extension EnvironmentValues {
     var isLoggedIn: Bool {
         get { self[IsLoggedInKey.self] }
         set { self[IsLoggedInKey.self] = newValue }
+    }
+}
+
+private struct ShowAuthKey: EnvironmentKey {
+    static let defaultValue: () -> Void = {}
+}
+
+extension EnvironmentValues {
+    var showAuth: () -> Void {
+        get { self[ShowAuthKey.self] }
+        set { self[ShowAuthKey.self] = newValue }
     }
 }
 
@@ -47,6 +78,7 @@ struct ContentView: View {
     @StateObject private var wallet = WalletStore()
     @AppStorage("isDarkMode") private var isDarkMode = false
     @AppStorage("appLanguage") private var appLanguageRaw: String = AppLanguage.system.rawValue
+    @AppStorage("userName") private var storedUserName: String = ""
     @State private var showSplash = true
 
     private var currentLanguage: AppLanguage {
@@ -115,6 +147,7 @@ struct ContentView: View {
         }
         .environmentObject(wallet)
         .environment(\.isLoggedIn, isLoggedIn)
+        .environment(\.showAuth, { showAuthSheet = true })
         .preferredColorScheme(isDarkMode ? .dark : .light)
         .environment(\.locale, currentLanguage.locale ?? Locale.autoupdatingCurrent)
     }
@@ -155,6 +188,8 @@ struct SplashView: View {
 struct LoginSheetView: View {
     @Binding var isLoggedIn: Bool
     var onClose: () -> Void
+
+    @AppStorage("userName") private var storedUserName: String = ""
 
     @State private var isSignUp = false
     @State private var name = ""
@@ -317,9 +352,14 @@ struct LoginSheetView: View {
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) {
             isLoading = false
             isLoggedIn = true
-            successMessage = isSignUp
-                ? "Регистрация успешна! Добро пожаловать, \(name.isEmpty ? "водитель" : name)."
-                : "Вход выполнен!"
+
+            if isSignUp {
+                storedUserName = name.trimmingCharacters(in: .whitespacesAndNewlines)
+                successMessage = "Регистрация успешна! Добро пожаловать, \(storedUserName.isEmpty ? "водитель" : storedUserName)."
+            } else {
+                successMessage = "Вход выполнен!"
+            }
+
             onClose()
         }
     }
@@ -337,6 +377,7 @@ struct BalanceView: View {
     @State private var errorMessage: String?
     @State private var successMessage: String?
     @State private var showAuthAlert = false
+    @FocusState private var isTopUpFocused: Bool
 
     var body: some View {
         VStack(spacing: 20) {
@@ -354,6 +395,7 @@ struct BalanceView: View {
                 .padding()
                 .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 12))
                 .disabled(!isLoggedIn)
+                .focused($isTopUpFocused)
 
             if let errorMessage {
                 Text(errorMessage)
@@ -391,6 +433,18 @@ struct BalanceView: View {
             Spacer()
         }
         .padding(.horizontal)
+        .contentShape(Rectangle())
+        .onTapGesture {
+            isTopUpFocused = false
+        }
+        .toolbar {
+            ToolbarItemGroup(placement: .keyboard) {
+                Spacer()
+                Button("Готово") {
+                    isTopUpFocused = false
+                }
+            }
+        }
         .alert("Войдите, чтобы пополнить баланс", isPresented: $showAuthAlert) {
             Button("ОК", role: .cancel) { }
         } message: {
@@ -412,6 +466,7 @@ struct BalanceView: View {
         wallet.balanceKZT += amount
         successMessage = "Баланс пополнен на \(formatKZT(amount))."
         topUpText = ""
+        isTopUpFocused = false
     }
 
     private func formatKZT(_ value: Decimal) -> String {
@@ -465,48 +520,64 @@ struct MainMapView: View {
 
 struct SettingsView: View {
     @EnvironmentObject private var wallet: WalletStore
+    @Environment(\.isLoggedIn) private var isLoggedIn
+    @Environment(\.showAuth) private var showAuth
     @AppStorage("isDarkMode") private var isDarkMode = false
     @AppStorage("notificationsEnabled") private var notificationsEnabled = true
     @AppStorage("appLanguage") private var appLanguageRaw: String = AppLanguage.system.rawValue
-    @State private var name: String = ""
-    @State private var email: String = ""
-
-    private var language: AppLanguage {
-        AppLanguage(rawValue: appLanguageRaw) ?? .system
-    }
+    @AppStorage("userName") private var storedUserName: String = ""
 
     var body: some View {
         Form {
-            Section("Профиль") {
-                TextField("Имя", text: $name)
-                TextField("E‑mail", text: $email)
-                    .keyboardType(.emailAddress)
-                    .textInputAutocapitalization(.none)
-                    .autocorrectionDisabled()
-            }
-
-            Section("Кошелёк") {
-                HStack {
-                    Text("Баланс")
-                    Spacer()
-                    Text(NumberFormatter.kzt.string(from: wallet.balanceKZT as NSDecimalNumber) ?? "")
-                        .fontWeight(.semibold)
-                }
-            }
-
-            Section("Предпочтения") {
-                Toggle("Тёмная тема", isOn: $isDarkMode)
-                Toggle("Уведомления", isOn: $notificationsEnabled)
-                Picker("Язык", selection: $appLanguageRaw) {
-                    ForEach(AppLanguage.allCases) { lang in
-                        Text(lang.displayName).tag(lang.rawValue)
+            if isLoggedIn {
+                Section("Профиль") {
+                    HStack {
+                        Text("Имя")
+                        Spacer()
+                        Text(storedUserName.isEmpty ? "—" : storedUserName)
+                            .foregroundStyle(.secondary)
                     }
                 }
-            }
 
-            Section {
-                Button(role: .destructive) {} label: {
-                    Text("Выйти")
+                Section("Кошелёк") {
+                    HStack {
+                        Text("Баланс")
+                        Spacer()
+                        Text(NumberFormatter.kzt.string(from: wallet.balanceKZT as NSDecimalNumber) ?? "")
+                            .fontWeight(.semibold)
+                    }
+                }
+
+                Section("Предпочтения") {
+                    Toggle("Тёмная тема", isOn: $isDarkMode)
+                    Toggle("Уведомления", isOn: $notificationsEnabled)
+                    Picker("Язык", selection: $appLanguageRaw) {
+                        ForEach(AppLanguage.allCases) { lang in
+                            Text(lang.displayName).tag(lang.rawValue)
+                        }
+                    }
+                }
+
+                Section("Управление") {
+                    Button("Скрыть клавиатуру") {
+                        // Глобальный способ скрыть — отправляем resignFirstResponder
+                        UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+                    }
+                }
+
+                Section {
+                    Button(role: .destructive) {} label: {
+                        Text("Выйти")
+                    }
+                }
+            } else {
+                Section {
+                    Button {
+                        showAuth()
+                    } label: {
+                        Text("Войти/Регистрация")
+                            .frame(maxWidth: .infinity, alignment: .center)
+                    }
                 }
             }
         }
