@@ -47,62 +47,108 @@ struct ContentView: View {
     @StateObject private var wallet = WalletStore()
     @AppStorage("isDarkMode") private var isDarkMode = false
     @AppStorage("appLanguage") private var appLanguageRaw: String = AppLanguage.system.rawValue
+    @State private var showSplash = true
 
     private var currentLanguage: AppLanguage {
         AppLanguage(rawValue: appLanguageRaw) ?? .system
     }
 
     var body: some View {
-        TabView {
-            NavigationStack {
-                MainMapView()
-                    .navigationTitle("Карта Алматы")
-                    .navigationBarTitleDisplayMode(.inline)
-                    .toolbar {
-                        ToolbarItem(placement: .topBarTrailing) {
-                            if isLoggedIn {
-                                Button("Выйти") {
-                                    isLoggedIn = false
-                                }
-                            } else {
-                                Button("Войти/Регистрация") {
-                                    showAuthSheet = true
-                                }
+        Group {
+            if showSplash {
+                SplashView()
+                    .onAppear {
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+                            withAnimation(.easeInOut(duration: 0.3)) {
+                                showSplash = false
                             }
                         }
                     }
-                    .sheet(isPresented: $showAuthSheet) {
-                        LoginSheetView(isLoggedIn: $isLoggedIn) {
-                            showAuthSheet = false
-                        }
+            } else {
+                TabView {
+                    NavigationStack {
+                        MainMapView()
+                            .navigationTitle("Карта Алматы")
+                            .navigationBarTitleDisplayMode(.inline)
+                            .toolbar {
+                                ToolbarItem(placement: .topBarTrailing) {
+                                    if isLoggedIn {
+                                        Button("Выйти") {
+                                            isLoggedIn = false
+                                        }
+                                    } else {
+                                        Button("Войти/Регистрация") {
+                                            showAuthSheet = true
+                                        }
+                                    }
+                                }
+                            }
+                            .sheet(isPresented: $showAuthSheet) {
+                                LoginSheetView(isLoggedIn: $isLoggedIn) {
+                                    showAuthSheet = false
+                                }
+                            }
                     }
-            }
-            .tabItem {
-                Label("Карта", systemImage: "map")
-            }
+                    .tabItem {
+                        Label("Карта", systemImage: "map")
+                    }
 
-            NavigationStack {
-                BalanceView()
-                    .navigationTitle("Баланс")
-                    .navigationBarTitleDisplayMode(.inline)
-            }
-            .tabItem {
-                Label("Баланс", systemImage: "creditcard")
-            }
+                    NavigationStack {
+                        BalanceView()
+                            .navigationTitle("Баланс")
+                            .navigationBarTitleDisplayMode(.inline)
+                    }
+                    .tabItem {
+                        Label("Баланс", systemImage: "creditcard")
+                    }
 
-            NavigationStack {
-                SettingsView()
-                    .navigationTitle("Настройки")
-                    .navigationBarTitleDisplayMode(.inline)
-            }
-            .tabItem {
-                Label("Настройки", systemImage: "gearshape")
+                    NavigationStack {
+                        SettingsView()
+                            .navigationTitle("Настройки")
+                            .navigationBarTitleDisplayMode(.inline)
+                    }
+                    .tabItem {
+                        Label("Настройки", systemImage: "gearshape")
+                    }
+                }
             }
         }
         .environmentObject(wallet)
         .environment(\.isLoggedIn, isLoggedIn)
         .preferredColorScheme(isDarkMode ? .dark : .light)
         .environment(\.locale, currentLanguage.locale ?? Locale.autoupdatingCurrent)
+    }
+}
+
+struct SplashView: View {
+    @State private var scale: CGFloat = 0.9
+    @State private var opacity: Double = 0.0
+
+    var body: some View {
+        ZStack {
+            Color(.systemBackground).ignoresSafeArea()
+            VStack(spacing: 12) {
+                Image(systemName: "car.fill")
+                    .font(.system(size: 56))
+                    .foregroundStyle(Color.accentColor)
+
+                Text("car_rent")
+                    .font(.system(size: 28, weight: .bold, design: .rounded))
+                ProgressView()
+                    .progressViewStyle(.circular)
+                    .tint(.secondary)
+            }
+            .scaleEffect(scale)
+            .opacity(opacity)
+            .onAppear {
+                withAnimation(.spring(response: 0.6, dampingFraction: 0.8)) {
+                    scale = 1.0
+                }
+                withAnimation(.easeIn(duration: 0.3)) {
+                    opacity = 1.0
+                }
+            }
+        }
     }
 }
 
