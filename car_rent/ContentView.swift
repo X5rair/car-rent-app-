@@ -79,6 +79,7 @@ struct UserRecord: Codable, Equatable {
     var name: String
     var email: String
     var passwordHash: String
+    var phone: String
 }
 
 final class AuthStore: ObservableObject {
@@ -94,12 +95,12 @@ final class AuthStore: ObservableObject {
         restoreSession()
     }
 
-    func register(name: String, email: String, password: String) throws {
+    func register(name: String, email: String, password: String, phone: String) throws {
         let emailKey = emailKeyFor(email)
         guard users[emailKey] == nil else {
             throw AuthError.emailAlreadyExists
         }
-        let record = UserRecord(name: name, email: emailKey, passwordHash: Self.hash(password))
+        let record = UserRecord(name: name, email: emailKey, passwordHash: Self.hash(password), phone: phone)
         users[emailKey] = record
         saveUsers()
         // Автовход после регистрации
@@ -145,7 +146,7 @@ final class AuthStore: ObservableObject {
         }
         currentUser = user
         isLoggedIn = true
-        // синхронизируем имя
+        // синхроним имя
         UserDefaults.standard.set(user.name, forKey: "userName")
     }
 
@@ -313,6 +314,7 @@ struct LoginSheetView: View {
     @State private var isSignUp = false
     @State private var name = ""
     @State private var email = ""
+    @State private var phone = ""
     @State private var password = ""
     @State private var isPasswordVisible = false
 
@@ -352,6 +354,18 @@ struct LoginSheetView: View {
                             .padding()
                             .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 12))
                             .onChange(of: name) { errorMessage = nil }
+
+                        TextField("+7 XXX XXX XX XX", text: $phone)
+                            .keyboardType(.phonePad)
+                            .textContentType(.telephoneNumber)
+                            .autocapitalization(.none)
+                            .disableAutocorrection(true)
+                            .padding()
+                            .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 12))
+                            .onChange(of: phone) { newValue in
+                                errorMessage = nil
+                                phone = formatKZPhone(newValue)
+                            }
                     }
 
                     TextField("E‑mail", text: $email)
@@ -440,6 +454,7 @@ struct LoginSheetView: View {
         if isSignUp {
             return !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
             && isValidEmail(email)
+            && isValidKZPhone(phone)
             && password.count >= 8
         } else {
             return isValidEmail(email) && password.count >= 8
@@ -455,6 +470,7 @@ struct LoginSheetView: View {
                 var reasons: [String] = []
                 if name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { reasons.append("имя пустое") }
                 if !isValidEmail(email) { reasons.append("e‑mail некорректен") }
+                if !isValidKZPhone(phone) { reasons.append("телефон некорректен (+7 XXX XXX XX XX)") }
                 if password.count < 8 { reasons.append("пароль меньше 8 символов") }
                 errorMessage = "Проверьте данные: " + reasons.joined(separator: ", ") + "."
             } else {
@@ -474,7 +490,8 @@ struct LoginSheetView: View {
                 if isSignUp {
                     try auth.register(name: name.trimmingCharacters(in: .whitespacesAndNewlines),
                                       email: email,
-                                      password: password)
+                                      password: password,
+                                      phone: normalizedKZPhone(phone))
                     storedUserName = auth.currentUser?.name ?? ""
                     successMessage = "Регистрация успешна! Добро пожаловать, \(storedUserName.isEmpty ? "водитель" : storedUserName)."
                 } else {
@@ -489,9 +506,81 @@ struct LoginSheetView: View {
         }
     }
 
+    // MARK: - Validation helpers
+
     private func isValidEmail(_ email: String) -> Bool {
         let trimmed = email.trimmingCharacters(in: .whitespacesAndNewlines)
         return trimmed.contains("@") && trimmed.contains(".") && trimmed.count >= 5
+    }
+
+    // Валидный казахстанский номер: +7 и ровно 11 цифр (включая ведущую 7), формат +7 XXX XXX XX XX
+    private func isValidKZPhone(_ input: String) -> Bool {
+        let digits = input.filter(\.isNumber)
+        // допускаем, что пользователь ввёл 8XXXXXXXXXX -> преобразуем в +7
+        if digits.count == 11, digits.first == "7" {
+            return true
+        }
+        // также примем 12 цифр, если первая 7 и есть ведущий + (редкий кейс при парсинге)
+        return false
+    }
+
+    // Нормализуем к виду: только цифры, заменяем ведущую 8 на 7, возвращаем строку цифр без плюса
+    private func normalizedKZPhone(_ input: String) -> String {
+        var digits = input.filter(\.isNumber)
+        if digits.first == "8" && digits.count == 11 {
+            digits.removeFirst()
+            digits = "7" + digits
+        }
+        // оставляем ровно 11 цифр начиная с 7, если больше — отрежем лишнее
+        if digits.count > 11 {
+            digits = String(digits.prefix(11))
+        }
+        return digits
+    }
+
+    // Форматирование ввода в маску +7 XXX XXX XX XX
+    private func formatKZPhone(_ input: String) -> String {
+        var digits = input.filter(\.isNumber)
+
+        // Если начинается с 8 и длина 11 — конвертируем в 7
+        if digits.first == "8" {
+            digits.removeFirst()
+            digits = "7" + digits
+        }
+
+        // Всегда начинаем с '7'
+        if digits.first != "7" {
+            digits = (digits.first == nil) ? "7" : "7" + digits.drop(while: { $0 == "7" })
+        }
+
+        // Ограничим максимум 11 цифрами
+        if digits.count > 11 {
+            digits = String(digits.prefix(11))
+        }
+
+        // Собираем формат: +7 XXX XXX XX XX
+        var result = "+7"
+        let rest = digits.dropFirst() // без первой '7'
+
+        func chunk(_ start: Int, _ len: Int) -> String {
+            let s = rest.index(rest.startIndex, offsetBy: min(start, rest.count), limitedBy: rest.endIndex) ?? rest.endIndex
+            let e = rest.index(s, offsetBy: min(len, rest.distance(from: s, to: rest.endIndex)), limitedBy: rest.endIndex) ?? rest.endIndex
+            return String(rest[s..<e])
+        }
+
+        let g1 = chunk(0, 3)
+        if !g1.isEmpty { result += " " + g1 }
+
+        let g2 = chunk(3, 3)
+        if !g2.isEmpty { result += " " + g2 }
+
+        let g3 = chunk(6, 2)
+        if !g3.isEmpty { result += " " + g3 }
+
+        let g4 = chunk(8, 2)
+        if !g4.isEmpty { result += " " + g4 }
+
+        return result
     }
 }
 
@@ -786,6 +875,12 @@ struct SettingsView: View {
                         Text(auth.currentUser?.email ?? "—")
                             .foregroundStyle(.secondary)
                     }
+                    HStack {
+                        Text("Телефон")
+                        Spacer()
+                        Text(formattedKZPhoneForDisplay(auth.currentUser?.phone ?? ""))
+                            .foregroundStyle(.secondary)
+                    }
                 }
 
                 Section("Кошелёк") {
@@ -825,6 +920,23 @@ struct SettingsView: View {
                 }
             }
         }
+    }
+
+    private func formattedKZPhoneForDisplay(_ digits: String) -> String {
+        guard digits.count == 11, digits.first == "7" else { return digits.isEmpty ? "—" : digits }
+        // форматируем 7XXXXXXXXXX в +7 XXX XXX XX XX
+        let rest = digits.dropFirst()
+        func chunk(_ start: Int, _ len: Int) -> String {
+            let s = rest.index(rest.startIndex, offsetBy: min(start, rest.count), limitedBy: rest.endIndex) ?? rest.endIndex
+            let e = rest.index(s, offsetBy: min(len, rest.distance(from: s, to: rest.endIndex)), limitedBy: rest.endIndex) ?? rest.endIndex
+            return String(rest[s..<e])
+        }
+        var result = "+7"
+        let g1 = chunk(0, 3); if !g1.isEmpty { result += " " + g1 }
+        let g2 = chunk(3, 3); if !g2.isEmpty { result += " " + g2 }
+        let g3 = chunk(6, 2); if !g3.isEmpty { result += " " + g3 }
+        let g4 = chunk(8, 2); if !g4.isEmpty { result += " " + g4 }
+        return result
     }
 }
 
