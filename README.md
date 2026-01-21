@@ -1,11 +1,11 @@
-🚗 Car Rent App
+# 🚗 Car Rent App
 
 Car Rent App is a modern car rental application designed to demonstrate how a real-world vehicle rental service can work.
 The app allows users to explore available cars, view detailed information, choose rental dates, and simulate the booking process through a clean and intuitive interface.
 
 ⸻
 
-🌟 About the Project
+## 🌟 About the Project
 
 Car Rent App is a portfolio and educational project that focuses on user experience and core business logic of a car rental platform.
 
