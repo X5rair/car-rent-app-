@@ -6,10 +6,22 @@ final class WalletStore: ObservableObject {
     @Published var balanceKZT: Decimal = 0
 }
 
+private struct IsLoggedInKey: EnvironmentKey {
+    static let defaultValue: Bool = false
+}
+
+extension EnvironmentValues {
+    var isLoggedIn: Bool {
+        get { self[IsLoggedInKey.self] }
+        set { self[IsLoggedInKey.self] = newValue }
+    }
+}
+
 struct ContentView: View {
     @State private var isLoggedIn = false
     @State private var showAuthSheet = false
     @StateObject private var wallet = WalletStore()
+    @AppStorage("isDarkMode") private var isDarkMode = false
 
     var body: some View {
         TabView {
@@ -59,6 +71,8 @@ struct ContentView: View {
             }
         }
         .environmentObject(wallet)
+        .environment(\.isLoggedIn, isLoggedIn)
+        .preferredColorScheme(isDarkMode ? .dark : .light)
     }
 }
 
@@ -242,9 +256,11 @@ struct LoginSheetView: View {
 
 struct BalanceView: View {
     @EnvironmentObject private var wallet: WalletStore
+    @Environment(\.isLoggedIn) private var isLoggedIn
     @State private var topUpText: String = ""
     @State private var errorMessage: String?
     @State private var successMessage: String?
+    @State private var showAuthAlert = false
 
     var body: some View {
         VStack(spacing: 20) {
@@ -261,6 +277,7 @@ struct BalanceView: View {
                 .keyboardType(.numberPad)
                 .padding()
                 .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 12))
+                .disabled(!isLoggedIn)
 
             if let errorMessage {
                 Text(errorMessage)
@@ -279,20 +296,30 @@ struct BalanceView: View {
             }
 
             Button {
-                topUp()
+                if isLoggedIn {
+                    topUp()
+                } else {
+                    showAuthAlert = true
+                }
             } label: {
                 Text("Пополнить")
                     .fontWeight(.semibold)
                     .frame(maxWidth: .infinity)
                     .padding()
-                    .background(Color.accentColor)
+                    .background(isLoggedIn ? Color.accentColor : Color.gray.opacity(0.4))
                     .foregroundStyle(.white)
                     .clipShape(RoundedRectangle(cornerRadius: 14))
             }
+            .disabled(!isLoggedIn)
 
             Spacer()
         }
         .padding(.horizontal)
+        .alert("Войдите, чтобы пополнить баланс", isPresented: $showAuthAlert) {
+            Button("ОК", role: .cancel) { }
+        } message: {
+            Text("Для пополнения баланса необходимо войти или зарегистрироваться.")
+        }
     }
 
     private func topUp() {
