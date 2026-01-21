@@ -1,10 +1,3 @@
-//
-//  ContentView.swift
-//  car_rent
-//
-//  Created by rair on 21.01.2026.
-//
-
 import SwiftUI
 import MapKit
 import Combine
@@ -14,11 +7,8 @@ final class WalletStore: ObservableObject {
 }
 
 struct ContentView: View {
-    // Состояние авторизации и показа формы
     @State private var isLoggedIn = false
     @State private var showAuthSheet = false
-
-    // Общий кошелёк для всех вкладок
     @StateObject private var wallet = WalletStore()
 
     var body: some View {
@@ -42,7 +32,6 @@ struct ContentView: View {
                     }
                     .sheet(isPresented: $showAuthSheet) {
                         LoginSheetView(isLoggedIn: $isLoggedIn) {
-                            // onClose
                             showAuthSheet = false
                         }
                     }
@@ -65,11 +54,9 @@ struct ContentView: View {
 }
 
 struct LoginSheetView: View {
-    // Внешние биндинги/замыкание
     @Binding var isLoggedIn: Bool
     var onClose: () -> Void
 
-    // Локальные состояния формы
     @State private var isSignUp = false
     @State private var name = ""
     @State private var email = ""
@@ -83,7 +70,6 @@ struct LoginSheetView: View {
     var body: some View {
         NavigationStack {
             VStack(spacing: 24) {
-                // Заголовок
                 VStack(spacing: 8) {
                     Text(isSignUp ? "Регистрация" : "Вход")
                         .font(.title.bold())
@@ -93,7 +79,6 @@ struct LoginSheetView: View {
                 }
                 .padding(.top, 8)
 
-                // Переключатель Вход / Регистрация
                 Picker("", selection: $isSignUp) {
                     Text("Вход").tag(false)
                     Text("Регистрация").tag(true)
@@ -105,7 +90,6 @@ struct LoginSheetView: View {
                     successMessage = nil
                 }
 
-                // Поля ввода
                 VStack(spacing: 14) {
                     if isSignUp {
                         TextField("Имя", text: $name)
@@ -151,7 +135,6 @@ struct LoginSheetView: View {
                 }
                 .padding(.horizontal)
 
-                // Ошибки / успех
                 if let errorMessage {
                     Text(errorMessage)
                         .font(.footnote)
@@ -168,7 +151,6 @@ struct LoginSheetView: View {
                         .padding(.horizontal)
                 }
 
-                // Кнопка действия
                 Button {
                     submit()
                 } label: {
@@ -257,7 +239,6 @@ struct BalanceView: View {
 
     var body: some View {
         VStack(spacing: 20) {
-            // Текущий баланс
             VStack(spacing: 6) {
                 Text("Текущий баланс")
                     .font(.headline)
@@ -267,13 +248,11 @@ struct BalanceView: View {
             }
             .padding(.top, 16)
 
-            // Поле ввода суммы
             TextField("Сумма пополнения (KZT)", text: $topUpText)
                 .keyboardType(.numberPad)
                 .padding()
                 .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 12))
 
-            // Сообщения
             if let errorMessage {
                 Text(errorMessage)
                     .font(.footnote)
@@ -290,7 +269,6 @@ struct BalanceView: View {
                     .padding(.horizontal)
             }
 
-            // Кнопка пополнения
             Button {
                 topUp()
             } label: {
@@ -312,7 +290,6 @@ struct BalanceView: View {
         errorMessage = nil
         successMessage = nil
 
-        // Преобразуем только цифры
         let digits = topUpText.filter { $0.isNumber }
         guard !digits.isEmpty, let amountInt = Int(digits), amountInt > 0 else {
             errorMessage = "Введите корректную сумму в тенге (только числа)."
@@ -329,17 +306,15 @@ struct BalanceView: View {
         let formatter = NumberFormatter()
         formatter.numberStyle = .currency
         formatter.currencyCode = "KZT"
-        formatter.maximumFractionDigits = 0 // тенге без тиынов, при желании можно 2
+        formatter.maximumFractionDigits = 0
         return formatter.string(from: value as NSDecimalNumber) ?? "\(value) KZT"
     }
 }
 
 struct MainMapView: View {
-    // Координаты
     private let almaty = CLLocationCoordinate2D(latitude: 43.238949, longitude: 76.889709)
     private let newYork = CLLocationCoordinate2D(latitude: 40.7128, longitude: -74.0060)
 
-    // Широкий регион по умолчанию
     @State private var region = MKCoordinateRegion(
         center: CLLocationCoordinate2D(latitude: 43.238949, longitude: 76.889709),
         span: MKCoordinateSpan(latitudeDelta: 4.0, longitudeDelta: 4.0)
