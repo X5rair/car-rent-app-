@@ -440,9 +440,9 @@ struct LoginSheetView: View {
         if isSignUp {
             return !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
             && isValidEmail(email)
-            && password.count >= 6
+            && password.count >= 8
         } else {
-            return isValidEmail(email) && !password.isEmpty
+            return isValidEmail(email) && password.count >= 8
         }
     }
 
@@ -455,12 +455,12 @@ struct LoginSheetView: View {
                 var reasons: [String] = []
                 if name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { reasons.append("имя пустое") }
                 if !isValidEmail(email) { reasons.append("e‑mail некорректен") }
-                if password.count < 6 { reasons.append("пароль меньше 6 символов") }
+                if password.count < 8 { reasons.append("пароль меньше 8 символов") }
                 errorMessage = "Проверьте данные: " + reasons.joined(separator: ", ") + "."
             } else {
                 var reasons: [String] = []
                 if !isValidEmail(email) { reasons.append("e‑mail некорректен") }
-                if password.isEmpty { reasons.append("пароль пустой") }
+                if password.count < 8 { reasons.append("пароль меньше 8 символов") }
                 errorMessage = "Проверьте данные: " + reasons.joined(separator: ", ") + "."
             }
             return
