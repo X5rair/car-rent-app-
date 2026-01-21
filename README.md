@@ -19,7 +19,7 @@ This project does not include real payments or production backend and is intende
 
 ⸻
 
-✨ Key Features
+## ✨ Key Features
 
 🚘 Browse a list of available cars with images and prices
 📄 View detailed information about each vehicle
@@ -30,7 +30,7 @@ This project does not include real payments or production backend and is intende
 
 ⸻
 
-🛠 Tech Stack
+## 🛠 Tech Stack
 
 💻 Programming Language: Swift / Kotlin / JavaScript
 🧩 Framework / Library: depends on platform implementation
@@ -39,7 +39,7 @@ This project does not include real payments or production backend and is intende
 
 ⸻
 
-▶️ Getting Started
+## ▶️ Getting Started
 
 🔹 Prerequisites
 
@@ -58,7 +58,7 @@ Before running the project, make sure you have the following installed:
 
 ⸻
 
-📂 Project Structure
+## 📂 Project Structure
 
 car-rent-app-
 📁 src — main source code
@@ -72,7 +72,7 @@ Project structure may vary depending on platform and implementation.
 
 ⸻
 
-🎯 Project Goals
+## 🎯 Project Goals
 
 ✔ Practice application architecture
 ✔ Improve UI/UX skills
@@ -82,7 +82,7 @@ Project structure may vary depending on platform and implementation.
 
 ⸻
 
-🚀 Planned Improvements
+# 🚀 Planned Improvements
 
 🔐 User authentication and profiles
 💳 Online payments integration
@@ -93,20 +93,20 @@ Project structure may vary depending on platform and implementation.
 
 ⸻
 
-📸 Screenshots
+## 📸 Screenshots
 
 Screenshots and demos will be added in future updates.
 
 ⸻
 
-👤 Author
+## 👤 Author
 
 X5rair
 Aspiring Mobile / Software Developer
 
 ⸻
 
-📄 License
+# 📄 License
 
 This project is created for educational and portfolio purposes.
 Free to use and modify for learning and non-commercial projects.
