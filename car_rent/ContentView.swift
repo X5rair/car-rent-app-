@@ -201,8 +201,8 @@ struct ContentView: View {
             if showSplash {
                 SplashView()
                     .onAppear {
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
-                            withAnimation(.easeInOut(duration: 0.3)) {
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+                            withAnimation(.easeInOut(duration: 0.25)) {
                                 showSplash = false
                             }
                         }
@@ -253,6 +253,20 @@ struct ContentView: View {
                     }
                     .tabItem {
                         Label("Настройки", systemImage: "gearshape")
+                    }
+                }
+                // Автопоказ авторизации, если не залогинен
+                .onAppear {
+                    if !auth.isLoggedIn {
+                        showAuthSheet = true
+                    }
+                }
+                // Реакция на изменения состояния входа
+                .onChange(of: auth.isLoggedIn) { loggedIn in
+                    if loggedIn {
+                        showAuthSheet = false
+                    } else {
+                        showAuthSheet = true
                     }
                 }
             }
@@ -319,14 +333,22 @@ struct LoginSheetView: View {
     var body: some View {
         NavigationStack {
             VStack(spacing: 24) {
-                VStack(spacing: 8) {
+                // Картинка машины над кнопками/формой
+                VStack(spacing: 12) {
+                    // Замените на Image("car_hero") после добавления ассета
+                    Image(systemName: "car.fill")
+                        .resizable()
+                        .scaledToFit()
+                        .frame(height: 96)
+                        .foregroundStyle(Color.accentColor)
+                        .padding(.top, 8)
+
                     Text(isSignUp ? "Регистрация" : "Вход")
                         .font(.title.bold())
                     Text(isSignUp ? "Создайте аккаунт" : "Войдите в аккаунт, чтобы арендовать авто")
                         .foregroundStyle(.secondary)
                         .multilineTextAlignment(.center)
                 }
-                .padding(.top, 8)
 
                 Picker("", selection: $isSignUp) {
                     Text("Вход").tag(false)
