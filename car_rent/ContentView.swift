@@ -4,26 +4,62 @@ import Combine
 import CryptoKit
 
 final class WalletStore: ObservableObject {
-    @Published var balanceKZT: Decimal = 0 {
-        didSet { saveBalance() }
+    // Словарь балансов по пользователям: ключ — email (или "guest")
+    @Published private(set) var balances: [String: Decimal] = [:] {
+        didSet { saveBalances() }
+    }
+
+    // Текущий пользователь (email) для отображения/изменения баланса
+    @Published private(set) var currentEmail: String = "guest" {
+        didSet { objectWillChange.send() }
+    }
+
+    // Удобный доступ к текущему балансу
+    var balanceKZT: Decimal {
+        get { balances[currentEmail] ?? 0 }
+        set { balances[currentEmail] = newValue }
     }
 
     init() {
-        loadBalance()
+        loadBalances()
     }
 
-    private func loadBalance() {
-        let saved = UserDefaults.standard.string(forKey: "wallet.balanceKZT") ?? "0"
-        if let decimal = Decimal(string: saved) {
-            balanceKZT = decimal
-        } else {
-            balanceKZT = 0
+    func setCurrentUser(email: String?) {
+        let key = (email?.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()).flatMap { $0.isEmpty ? nil : $0 } ?? "guest"
+        currentEmail = key
+        // Если для нового пользователя нет записи — инициализируем нулём
+        if balances[currentEmail] == nil {
+            balances[currentEmail] = 0
         }
     }
 
-    private func saveBalance() {
-        let stringValue = NSDecimalNumber(decimal: balanceKZT).stringValue
-        UserDefaults.standard.set(stringValue, forKey: "wallet.balanceKZT")
+    func updateBalance(by delta: Decimal) {
+        let current = balances[currentEmail] ?? 0
+        balances[currentEmail] = current + delta
+    }
+
+    private func loadBalances() {
+        if let data = UserDefaults.standard.data(forKey: "wallet.balances.json"),
+           let decoded = try? JSONDecoder().decode([String: String].self, from: data) {
+            // Храним как строки для стабильности Decimal
+            var result: [String: Decimal] = [:]
+            for (k, v) in decoded {
+                if let d = Decimal(string: v) {
+                    result[k] = d
+                }
+            }
+            balances = result
+        } else {
+            balances = [:]
+        }
+    }
+
+    private func saveBalances() {
+        // Сохраняем Decimal как строки
+        let encoded: [String: String] = balances.mapValues { NSDecimalNumber(decimal: $0).stringValue }
+        if let data = try? JSONEncoder().encode(encoded) {
+            UserDefaults.standard.set(data, forKey: "wallet.balances.json")
+        }
     }
 }
 
@@ -185,8 +221,9 @@ final class AuthStore: ObservableObject {
 
 struct ContentView: View {
     @StateObject private var auth = AuthStore()
-    @State private var showAuthFullScreen = false
     @StateObject private var wallet = WalletStore()
+
+    @State private var showAuthFullScreen = false
     @AppStorage("isDarkMode") private var isDarkMode = false
     @AppStorage("appLanguage") private var appLanguageRaw: String = AppLanguage.system.rawValue
     @AppStorage("userName") private var storedUserName: String = ""
@@ -198,7 +235,6 @@ struct ContentView: View {
 
     var body: some View {
         ZStack {
-            // Фоновый градиент для всего приложения
             LinearGradient(colors: [Color.black, Color.blue.opacity(0.35)],
                            startPoint: .topLeading,
                            endPoint: .bottomTrailing)
@@ -253,12 +289,19 @@ struct ContentView: View {
                         }
                     }
                     .onAppear {
+                        // Установим пользователя для кошелька при запуске
+                        wallet.setCurrentUser(email: auth.currentUser?.email)
                         if !auth.isLoggedIn {
                             showAuthFullScreen = true
                         }
                     }
                     .onChange(of: auth.isLoggedIn) { loggedIn in
+                        // При входе/выходе переключаем пользователя в кошельке
+                        wallet.setCurrentUser(email: auth.currentUser?.email)
                         showAuthFullScreen = !loggedIn
+                    }
+                    .onChange(of: auth.currentUser?.email) { _ in
+                        wallet.setCurrentUser(email: auth.currentUser?.email)
                     }
                     .fullScreenCover(isPresented: $showAuthFullScreen) {
                         AuthFullScreenView()
@@ -322,7 +365,7 @@ struct SplashView: View {
     }
 }
 
-// MARK: - Восстановленные экраны с обновлённым стилем
+// MARK: - Баланс, карта, профиль (без изменений логики, но баланс теперь берётся из WalletStore по текущему email)
 
 struct BalanceView: View {
     @EnvironmentObject private var wallet: WalletStore
@@ -342,7 +385,6 @@ struct BalanceView: View {
     var body: some View {
         ScrollView {
             VStack(spacing: 20) {
-                // Карточка баланса
                 ZStack {
                     RoundedRectangle(cornerRadius: 20)
                         .fill(LinearGradient(colors: [Color.indigo.opacity(0.85), Color.blue.opacity(0.7)],
@@ -363,7 +405,6 @@ struct BalanceView: View {
                 .padding(.horizontal)
                 .shadow(color: .black.opacity(0.25), radius: 12, x: 0, y: 6)
 
-                // Поле ввода
                 TextField("Сумма пополнения (KZT)", text: $topUpText)
                     .keyboardType(.numberPad)
                     .padding()
@@ -461,7 +502,7 @@ struct BalanceView: View {
         }
 
         let amount = Decimal(amountInt)
-        wallet.balanceKZT += amount
+        wallet.updateBalance(by: amount)
         successMessage = "Баланс пополнен на \(formatKZT(amount))."
         topUpText = ""
         isTopUpFocused = false
@@ -507,7 +548,7 @@ struct BalanceView: View {
                 try await Task.sleep(nanoseconds: 600_000_000)
                 let status = try await paymentAPI.fetchStatus(paymentId: intent.paymentId)
                 if status.status == .succeeded {
-                    wallet.balanceKZT += Decimal(status.amountKZT)
+                    wallet.updateBalance(by: Decimal(status.amountKZT))
                     successMessage = "Оплата прошла успешно на \(formatKZT(Decimal(status.amountKZT)))."
                     topUpText = ""
                 } else {
@@ -596,7 +637,6 @@ struct MainMapView: View {
             }
             .ignoresSafeArea(edges: .bottom)
 
-            // Верхняя панель приветствия
             VStack(spacing: 8) {
                 HStack {
                     VStack(alignment: .leading, spacing: 4) {
@@ -717,17 +757,13 @@ struct SettingsView: View {
     var body: some View {
         ScrollView {
             VStack(spacing: 16) {
-                // Карточка профиля
                 VStack(spacing: 8) {
                     Image(systemName: "person.crop.circle.fill")
                         .font(.system(size: 56))
-                        .foregroundStyle(.white)
-                        .shadow(color: .blue.opacity(0.4), radius: 10, x: 0, y: 0)
                     Text(storedUserName.isEmpty ? "Гость" : storedUserName)
                         .font(.title3).bold()
-                        .foregroundStyle(.white)
                     Text(auth.currentUser?.email ?? "—")
-                        .foregroundStyle(.white.opacity(0.7))
+                        .foregroundStyle(.secondary)
                 }
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 24)
@@ -735,14 +771,11 @@ struct SettingsView: View {
                 .overlay(RoundedRectangle(cornerRadius: 20).stroke(.white.opacity(0.1), lineWidth: 1))
                 .padding(.horizontal)
 
-                // Настройки
                 VStack(spacing: 12) {
                     Toggle("Тёмная тема", isOn: $isDarkMode)
                         .tint(.blue)
-
                     Toggle("Уведомления", isOn: $notificationsEnabled)
                         .tint(.blue)
-
                     HStack {
                         Text("Язык")
                         Spacer()
@@ -792,22 +825,6 @@ struct SettingsView: View {
             .padding(.top, 16)
         }
         .navigationBarTitleDisplayMode(.inline)
-    }
-
-    private func formattedKZPhoneForDisplay(_ digits: String) -> String {
-        guard digits.count == 11, digits.first == "7" else { return digits.isEmpty ? "—" : digits }
-        let rest = digits.dropFirst()
-        func chunk(_ start: Int, _ len: Int) -> String {
-            let s = rest.index(rest.startIndex, offsetBy: min(start, rest.count), limitedBy: rest.endIndex) ?? rest.endIndex
-            let e = rest.index(s, offsetBy: min(len, rest.distance(from: s, to: rest.endIndex)), limitedBy: rest.endIndex) ?? rest.endIndex
-            return String(rest[s..<e])
-        }
-        var result = "+7"
-        let g1 = chunk(0, 3); if !g1.isEmpty { result += " " + g1 }
-        let g2 = chunk(3, 3); if !g2.isEmpty { result += " " + g2 }
-        let g3 = chunk(6, 2); if !g3.isEmpty { result += " " + g3 }
-        let g4 = chunk(8, 2); if !g4.isEmpty { result += " " + g4 }
-        return result
     }
 }
 
