@@ -1,4 +1,5 @@
 import SwiftUI
+// import FirebaseAuth // Вернём, когда снова подключим реальный SMS
 
 struct AuthFullScreenView: View {
     @EnvironmentObject private var auth: AuthStore
@@ -15,7 +16,7 @@ struct AuthFullScreenView: View {
     @State private var errorMessage: String?
     @State private var successMessage: String?
 
-    // Новый флаг: требовать OTP после успешной регистрации/логина
+    // Переход к OTP (мок-режим)
     @State private var requireOTP = false
     @State private var otpPhoneMasked: String = ""
 
@@ -28,18 +29,18 @@ struct AuthFullScreenView: View {
 
             ScrollView {
                 VStack(spacing: 20) {
-                    // Hero блок
+                    // Hero
                     VStack(spacing: 12) {
                         ZStack {
                             Circle()
                                 .fill(Color.white.opacity(0.06))
-                                .frame(width: 140, height: 140)
+                                .frame(width: 160, height: 160)
                                 .blur(radius: 2)
-                            Image(systemName: "car.fill")
+                            Image("hyundai_sonata")
                                 .resizable()
                                 .scaledToFit()
-                                .frame(height: 80)
-                                .foregroundStyle(.white)
+                                .frame(height: 110)
+                                .clipShape(RoundedRectangle(cornerRadius: 16))
                                 .shadow(color: .blue.opacity(0.6), radius: 12, x: 0, y: 0)
                         }
                         Text("PASSION MOTORS")
@@ -85,7 +86,7 @@ struct AuthFullScreenView: View {
                                 .padding()
                                 .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 14))
                                 .overlay(RoundedRectangle(cornerRadius: 14).stroke(Color.white.opacity(0.1), lineWidth: 1))
-                                .onChange(of: name) { errorMessage = nil }
+                                .onChange(of: name) { _ in errorMessage = nil }
 
                             TextField("+7 XXX XXX XX XX", text: $phone)
                                 .keyboardType(.phonePad)
@@ -109,7 +110,7 @@ struct AuthFullScreenView: View {
                             .padding()
                             .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 14))
                             .overlay(RoundedRectangle(cornerRadius: 14).stroke(Color.white.opacity(0.1), lineWidth: 1))
-                            .onChange(of: email) { errorMessage = nil }
+                            .onChange(of: email) { _ in errorMessage = nil }
 
                         HStack {
                             Group {
@@ -122,7 +123,7 @@ struct AuthFullScreenView: View {
                             .textContentType(.password)
                             .autocapitalization(.none)
                             .disableAutocorrection(true)
-                            .onChange(of: password) { errorMessage = nil }
+                            .onChange(of: password) { _ in errorMessage = nil }
 
                             Button {
                                 isPasswordVisible.toggle()
@@ -182,18 +183,15 @@ struct AuthFullScreenView: View {
         }
         .interactiveDismissDisabled(true)
         .navigationBarHidden(true)
-        // Полнокрановый шаг OTP
-        .fullScreenCover(isPresented: $requireOTP) {
+        // Мок-режим: показываем OTP через sheet. Никогда не закрываем автоматически.
+        .sheet(isPresented: $requireOTP) {
             OtpVerificationView(
-                phoneMasked: otpPhoneMasked,
+                phoneMasked: otpPhoneMasked.isEmpty ? "ваш номер" : otpPhoneMasked,
                 onCancel: {
-                    // Разрешим вернуться к форме (можно иначе — сделать недоступной отмену)
                     requireOTP = false
                 },
                 onVerified: {
-                    // После успешной проверки OTP просто позволим ContentView закрыть авторизацию
                     requireOTP = false
-                    // Ничего дополнительно не делаем — auth.isLoggedIn уже true после submit()
                 }
             )
         }
@@ -233,50 +231,37 @@ struct AuthFullScreenView: View {
 
         isLoading = true
 
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
-            defer { isLoading = false }
-            do {
-                if isSignUp {
-                    try auth.register(name: name.trimmingCharacters(in: .whitespacesAndNewlines),
-                                      email: email,
-                                      password: password,
-                                      phone: normalizedKZPhone(phone))
-                    storedUserName = auth.currentUser?.name ?? ""
-                    successMessage = "Регистрация успешна!"
-                } else {
-                    try auth.login(email: email, password: password)
-                    storedUserName = auth.currentUser?.name ?? ""
-                    successMessage = "Вход выполнен!"
-                }
-
-                // 1) Маскируем телефон/email для подсказки на экране OTP
-                if isSignUp {
-                    otpPhoneMasked = maskedPhone(normalizedKZPhone(phone))
-                } else {
-                    otpPhoneMasked = maskedEmail(email)
-                }
-                // 2) Требуем OTP-подтверждение перед входом в приложение
-                requireOTP = true
-
-            } catch {
-                errorMessage = (error as? LocalizedError)?.errorDescription ?? "Ошибка входа/регистрации."
+        // Сразу выполняем локальную регистрацию/вход
+        do {
+            if isSignUp {
+                try auth.register(name: name.trimmingCharacters(in: .whitespacesAndNewlines),
+                                  email: email,
+                                  password: password,
+                                  phone: normalizedKZPhone(phone))
+                storedUserName = auth.currentUser?.name ?? ""
+                successMessage = "Регистрация успешна!"
+            } else {
+                try auth.login(email: email, password: password)
+                storedUserName = auth.currentUser?.name ?? ""
+                successMessage = "Вход выполнен!"
             }
+        } catch {
+            isLoading = false
+            errorMessage = (error as? LocalizedError)?.errorDescription ?? "Ошибка входа/регистрации."
+            return
         }
+
+        // Мок: без задержек открываем OTP и держим sheet до действий пользователя
+        let digits = normalizedKZPhone(isSignUp ? phone : (auth.currentUser?.phone ?? phone))
+        otpPhoneMasked = maskedPhone(digits)
+        isLoading = false
+        requireOTP = true
     }
 
     private func maskedPhone(_ digits: String) -> String {
         guard digits.count == 11 else { return digits }
         let tail = String(digits.suffix(2))
         return "+7 *** *** ** " + tail
-    }
-
-    private func maskedEmail(_ mail: String) -> String {
-        let parts = mail.split(separator: "@")
-        guard parts.count == 2 else { return mail }
-        let name = parts[0]
-        let domain = parts[1]
-        let maskedName = name.prefix(1) + "***"
-        return maskedName + "@" + domain
     }
 
     private func isValidEmail(_ email: String) -> Bool {

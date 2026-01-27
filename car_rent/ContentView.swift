@@ -643,7 +643,7 @@ struct MainMapView: View {
                         Text("Добро пожаловать в")
                             .font(.caption)
                             .foregroundStyle(.secondary)
-                        Text("AZV Motors")
+                        Text("PASSION MOTORS")
                             .font(.title3).bold()
                     }
                     Spacer()

@@ -5,8 +5,12 @@ struct OtpVerificationView: View {
     let onCancel: () -> Void
     let onVerified: () -> Void
 
-    @State private var code: [String] = ["", "", "", ""]
+    // 6 цифр
+    @State private var code: [String] = ["", "", "", "", "", ""]
     @FocusState private var focusedIndex: Int?
+
+    @State private var isLoading = false
+    @State private var errorMessage: String?
 
     var body: some View {
         ZStack {
@@ -20,7 +24,7 @@ struct OtpVerificationView: View {
                     Text("Введите код")
                         .font(.title3).bold()
                         .foregroundStyle(.white)
-                    Text("Мы отправили 4‑значный код на \(phoneMasked)")
+                    Text("Мы отправили 6‑значный код на \(phoneMasked)")
                         .font(.subheadline)
                         .foregroundStyle(.white.opacity(0.7))
                         .multilineTextAlignment(.center)
@@ -29,20 +33,18 @@ struct OtpVerificationView: View {
                 .padding(.top, 40)
 
                 HStack(spacing: 12) {
-                    ForEach(0..<4, id: \.self) { idx in
+                    ForEach(0..<6, id: \.self) { idx in
                         TextField("", text: Binding(
                             get: { code[idx] },
                             set: { newValue in
                                 let filtered = newValue.filter(\.isNumber)
                                 if filtered.count > 1 {
-                                    // вставка из буфера: возьмём только первый символ
                                     code[idx] = String(filtered.prefix(1))
                                 } else {
                                     code[idx] = filtered
                                 }
                                 if !code[idx].isEmpty {
-                                    // переход к следующему полю
-                                    focusedIndex = min(idx + 1, 3)
+                                    focusedIndex = min(idx + 1, 5)
                                 }
                             })
                         )
@@ -56,22 +58,30 @@ struct OtpVerificationView: View {
                     }
                 }
 
-                Button {
-                    // Простая проверка: 4 цифры
-                    if code.joined().count == 4 {
-                        onVerified()
-                    }
-                } label: {
-                    Text("Подтвердить")
-                        .fontWeight(.semibold)
-                        .frame(maxWidth: .infinity)
-                        .padding()
-                        .background(code.joined().count == 4 ? Color.blue : Color.gray.opacity(0.4))
-                        .foregroundStyle(.white)
-                        .clipShape(RoundedRectangle(cornerRadius: 14))
-                        .shadow(color: .blue.opacity(0.35), radius: 12, x: 0, y: 6)
+                if let errorMessage {
+                    Text(errorMessage)
+                        .font(.footnote)
+                        .foregroundStyle(.red)
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal)
                 }
-                .disabled(code.joined().count != 4)
+
+                Button {
+                    Task { await verify() }
+                } label: {
+                    HStack {
+                        if isLoading { ProgressView().tint(.white) }
+                        Text("Подтвердить")
+                    }
+                    .fontWeight(.semibold)
+                    .frame(maxWidth: .infinity)
+                    .padding()
+                    .background(code.joined().count == 6 ? Color.blue : Color.gray.opacity(0.4))
+                    .foregroundStyle(.white)
+                    .clipShape(RoundedRectangle(cornerRadius: 14))
+                    .shadow(color: .blue.opacity(0.35), radius: 12, x: 0, y: 6)
+                }
+                .disabled(code.joined().count != 6 || isLoading)
                 .padding(.horizontal)
 
                 Button("Изменить номер/почту") {
@@ -83,5 +93,19 @@ struct OtpVerificationView: View {
             }
         }
         .onAppear { focusedIndex = 0 }
+    }
+
+    // Мок: считаем 123456 корректным кодом
+    private func verify() async {
+        errorMessage = nil
+        isLoading = true
+        defer { isLoading = false }
+
+        let entered = code.joined()
+        if entered == "123456" {
+            await MainActor.run { onVerified() }
+        } else {
+            await MainActor.run { errorMessage = "Неверный код. Попробуйте снова (подсказка: 123456)." }
+        }
     }
 }

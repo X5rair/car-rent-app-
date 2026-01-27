@@ -9,6 +9,9 @@
 /* Begin PBXBuildFile section */
 		73362BD52F2296FF00D09481 /* PayboxSDKStubs.swift in Sources */ = {isa = PBXBuildFile; fileRef = 73362BD42F2296FF00D09481 /* PayboxSDKStubs.swift */; };
 		7393B81A2F28AD7700CF32A4 /* AuthFullScreenView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7393B8192F28AD7700CF32A4 /* AuthFullScreenView.swift */; };
+		7393B81E2F28B61D00CF32A4 /* GoogleService-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = 7393B81D2F28B61D00CF32A4 /* GoogleService-Info.plist */; };
+		7393B8222F28BBB800CF32A4 /* FirebaseCore in Frameworks */ = {isa = PBXBuildFile; productRef = 7393B8212F28BBB800CF32A4 /* FirebaseCore */; };
+		7393B8242F28BBBC00CF32A4 /* FirebaseAuth in Frameworks */ = {isa = PBXBuildFile; productRef = 7393B8232F28BBBC00CF32A4 /* FirebaseAuth */; };
 		73A1044B2F2101DC00640BC7 /* PaymentAPI.swift in Sources */ = {isa = PBXBuildFile; fileRef = 73A1044A2F2101DC00640BC7 /* PaymentAPI.swift */; };
 		73A1044D2F2101DD00640BC7 /* PayBoxSDKService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 73A1044C2F2101DD00640BC7 /* PayBoxSDKService.swift */; };
 		73A1044F2F2104C000640BC7 /* PayboxConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = 73A1044E2F2104C000640BC7 /* PayboxConfig.swift */; };
@@ -19,6 +22,7 @@
 /* Begin PBXFileReference section */
 		73362BD42F2296FF00D09481 /* PayboxSDKStubs.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PayboxSDKStubs.swift; sourceTree = "<group>"; };
 		7393B8192F28AD7700CF32A4 /* AuthFullScreenView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthFullScreenView.swift; sourceTree = "<group>"; };
+		7393B81D2F28B61D00CF32A4 /* GoogleService-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "GoogleService-Info.plist"; sourceTree = "<group>"; };
 		73A104302F20B91F00640BC7 /* car_rent.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = car_rent.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		73A1044A2F2101DC00640BC7 /* PaymentAPI.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PaymentAPI.swift; sourceTree = "<group>"; };
 		73A1044C2F2101DD00640BC7 /* PayBoxSDKService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PayBoxSDKService.swift; sourceTree = "<group>"; };
@@ -40,12 +44,21 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				7393B8222F28BBB800CF32A4 /* FirebaseCore in Frameworks */,
+				7393B8242F28BBBC00CF32A4 /* FirebaseAuth in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		7393B8202F28BBB800CF32A4 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
 		73A104272F20B91F00640BC7 = {
 			isa = PBXGroup;
 			children = (
@@ -58,6 +71,8 @@
 				73A104522F2104CB00640BC7 /* RealPayBoxSDKService.swift */,
 				73362BD42F2296FF00D09481 /* PayboxSDKStubs.swift */,
 				7393B8192F28AD7700CF32A4 /* AuthFullScreenView.swift */,
+				7393B81D2F28B61D00CF32A4 /* GoogleService-Info.plist */,
+				7393B8202F28BBB800CF32A4 /* Frameworks */,
 			);
 			sourceTree = "<group>";
 		};
@@ -89,6 +104,8 @@
 			);
 			name = car_rent;
 			packageProductDependencies = (
+				7393B8212F28BBB800CF32A4 /* FirebaseCore */,
+				7393B8232F28BBBC00CF32A4 /* FirebaseAuth */,
 			);
 			productName = car_rent;
 			productReference = 73A104302F20B91F00640BC7 /* car_rent.app */;
@@ -118,6 +135,9 @@
 			);
 			mainGroup = 73A104272F20B91F00640BC7;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				7393B81F2F28B81E00CF32A4 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 73A104312F20B91F00640BC7 /* Products */;
 			projectDirPath = "";
@@ -133,6 +153,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				7393B81E2F28B61D00CF32A4 /* GoogleService-Info.plist in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -382,6 +403,30 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		7393B81F2F28B81E00CF32A4 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/firebase/firebase-ios-sdk";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 12.8.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		7393B8212F28BBB800CF32A4 /* FirebaseCore */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 7393B81F2F28B81E00CF32A4 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseCore;
+		};
+		7393B8232F28BBBC00CF32A4 /* FirebaseAuth */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 7393B81F2F28B81E00CF32A4 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseAuth;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 73A104282F20B91F00640BC7 /* Project object */;
 }
