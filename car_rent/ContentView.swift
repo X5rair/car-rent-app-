@@ -197,66 +197,74 @@ struct ContentView: View {
     }
 
     var body: some View {
-        Group {
-            if showSplash {
-                SplashView()
-                    .onAppear {
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
-                            withAnimation(.easeInOut(duration: 0.25)) {
-                                showSplash = false
-                            }
-                        }
-                    }
-            } else {
-                TabView {
-                    NavigationStack {
-                        MainMapView()
-                            .navigationTitle("Карта Алматы")
-                            .navigationBarTitleDisplayMode(.inline)
-                            .toolbar {
-                                ToolbarItem(placement: .topBarTrailing) {
-                                    if auth.isLoggedIn {
-                                        Button("Выйти") { auth.logout() }
-                                    } else {
-                                        Button("Войти/Регистрация") { showAuthFullScreen = true }
-                                    }
+        ZStack {
+            // Фоновый градиент для всего приложения
+            LinearGradient(colors: [Color.black, Color.blue.opacity(0.35)],
+                           startPoint: .topLeading,
+                           endPoint: .bottomTrailing)
+                .ignoresSafeArea()
+
+            Group {
+                if showSplash {
+                    SplashView()
+                        .onAppear {
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+                                withAnimation(.easeInOut(duration: 0.25)) {
+                                    showSplash = false
                                 }
                             }
-                    }
-                    .tabItem {
-                        Label("Карта", systemImage: "map")
-                    }
+                        }
+                } else {
+                    TabView {
+                        NavigationStack {
+                            MainMapView()
+                                .navigationTitle("AZV Motors")
+                                .navigationBarTitleDisplayMode(.inline)
+                                .toolbar {
+                                    ToolbarItem(placement: .topBarTrailing) {
+                                        if auth.isLoggedIn {
+                                            Button("Выйти") { auth.logout() }
+                                        } else {
+                                            Button("Войти") { showAuthFullScreen = true }
+                                        }
+                                    }
+                                }
+                        }
+                        .tabItem {
+                            Label("Главная", systemImage: "map")
+                        }
 
-                    NavigationStack {
-                        BalanceView()
-                            .navigationTitle("Баланс")
-                            .navigationBarTitleDisplayMode(.inline)
-                    }
-                    .tabItem {
-                        Label("Баланс", systemImage: "creditcard")
-                    }
+                        NavigationStack {
+                            BalanceView()
+                                .navigationTitle("Баланс")
+                                .navigationBarTitleDisplayMode(.inline)
+                        }
+                        .tabItem {
+                            Label("Баланс", systemImage: "creditcard.fill")
+                        }
 
-                    NavigationStack {
-                        SettingsView()
-                            .navigationTitle("Настройки")
-                            .navigationBarTitleDisplayMode(.inline)
+                        NavigationStack {
+                            SettingsView()
+                                .navigationTitle("Профиль")
+                                .navigationBarTitleDisplayMode(.inline)
+                        }
+                        .tabItem {
+                            Label("Профиль", systemImage: "person.crop.circle")
+                        }
                     }
-                    .tabItem {
-                        Label("Настройки", systemImage: "gearshape")
+                    .onAppear {
+                        if !auth.isLoggedIn {
+                            showAuthFullScreen = true
+                        }
                     }
-                }
-                .onAppear {
-                    if !auth.isLoggedIn {
-                        showAuthFullScreen = true
+                    .onChange(of: auth.isLoggedIn) { loggedIn in
+                        showAuthFullScreen = !loggedIn
                     }
-                }
-                .onChange(of: auth.isLoggedIn) { loggedIn in
-                    showAuthFullScreen = !loggedIn
-                }
-                .fullScreenCover(isPresented: $showAuthFullScreen) {
-                    AuthFullScreenView()
-                        .environmentObject(auth)
-                        .preferredColorScheme(isDarkMode ? .dark : .light)
+                    .fullScreenCover(isPresented: $showAuthFullScreen) {
+                        AuthFullScreenView()
+                            .environmentObject(auth)
+                            .preferredColorScheme(isDarkMode ? .dark : .light)
+                    }
                 }
             }
         }
@@ -275,25 +283,38 @@ struct SplashView: View {
 
     var body: some View {
         ZStack {
-            Color(.systemBackground).ignoresSafeArea()
-            VStack(spacing: 12) {
-                Image(systemName: "car.fill")
-                    .font(.system(size: 56))
-                    .foregroundStyle(Color.accentColor)
+            LinearGradient(colors: [Color.black, Color.indigo.opacity(0.5)],
+                           startPoint: .top,
+                           endPoint: .bottom)
+                .ignoresSafeArea()
 
-                Text("car_rent")
+            VStack(spacing: 16) {
+                ZStack {
+                    Circle()
+                        .fill(Color.white.opacity(0.06))
+                        .frame(width: 140, height: 140)
+                        .blur(radius: 2)
+                    Image(systemName: "car.fill")
+                        .font(.system(size: 64, weight: .bold))
+                        .foregroundStyle(.white)
+                        .shadow(color: .blue.opacity(0.6), radius: 12, x: 0, y: 0)
+                }
+                .scaleEffect(scale)
+                .opacity(opacity)
+
+                Text("AZV Motors")
                     .font(.system(size: 28, weight: .bold, design: .rounded))
+                    .foregroundStyle(.white.opacity(0.95))
+
                 ProgressView()
                     .progressViewStyle(.circular)
-                    .tint(.secondary)
+                    .tint(.white.opacity(0.8))
             }
-            .scaleEffect(scale)
-            .opacity(opacity)
             .onAppear {
                 withAnimation(.spring(response: 0.6, dampingFraction: 0.8)) {
                     scale = 1.0
                 }
-                withAnimation(.easeIn(duration: 0.3)) {
+                withAnimation(.easeIn(duration: 0.35)) {
                     opacity = 1.0
                 }
             }
@@ -301,7 +322,7 @@ struct SplashView: View {
     }
 }
 
-// MARK: - Восстановленные экраны
+// MARK: - Восстановленные экраны с обновлённым стилем
 
 struct BalanceView: View {
     @EnvironmentObject private var wallet: WalletStore
@@ -319,102 +340,114 @@ struct BalanceView: View {
     @State private var isPaying = false
 
     var body: some View {
-        VStack(spacing: 20) {
-            VStack(spacing: 6) {
-                Text("Текущий баланс")
-                    .font(.headline)
-                    .foregroundStyle(.secondary)
-                Text(formatKZT(wallet.balanceKZT))
-                    .font(.system(size: 36, weight: .bold, design: .rounded))
-            }
-            .padding(.top, 16)
-
-            TextField("Сумма пополнения (KZT)", text: $topUpText)
-                .keyboardType(.numberPad)
-                .padding()
-                .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 12))
-                .disabled(!isLoggedIn || isPaying)
-                .focused($isTopUpFocused)
-
-            if let errorMessage {
-                Text(errorMessage)
-                    .font(.footnote)
-                    .foregroundStyle(.red)
-                    .multilineTextAlignment(.center)
-                    .padding(.horizontal)
-            }
-
-            if let successMessage {
-                Text(successMessage)
-                    .font(.footnote)
-                    .foregroundStyle(.green)
-                    .multilineTextAlignment(.center)
-                    .padding(.horizontal)
-            }
-
-            HStack(spacing: 12) {
-                Button {
-                    if isLoggedIn {
-                        topUpLocal()
-                    } else {
-                        showAuthAlert = true
+        ScrollView {
+            VStack(spacing: 20) {
+                // Карточка баланса
+                ZStack {
+                    RoundedRectangle(cornerRadius: 20)
+                        .fill(LinearGradient(colors: [Color.indigo.opacity(0.85), Color.blue.opacity(0.7)],
+                                             startPoint: .topLeading, endPoint: .bottomTrailing))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 20)
+                                .stroke(Color.white.opacity(0.12), lineWidth: 1)
+                        )
+                    VStack(spacing: 8) {
+                        Text("Текущий баланс")
+                            .foregroundStyle(.white.opacity(0.85))
+                        Text(formatKZT(wallet.balanceKZT))
+                            .font(.system(size: 36, weight: .bold, design: .rounded))
+                            .foregroundStyle(.white)
                     }
-                } label: {
-                    Text("Пополнить (локально)")
+                    .padding(.vertical, 24)
+                }
+                .padding(.horizontal)
+                .shadow(color: .black.opacity(0.25), radius: 12, x: 0, y: 6)
+
+                // Поле ввода
+                TextField("Сумма пополнения (KZT)", text: $topUpText)
+                    .keyboardType(.numberPad)
+                    .padding()
+                    .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 14))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 14)
+                            .stroke(Color.white.opacity(0.12), lineWidth: 1)
+                    )
+                    .padding(.horizontal)
+                    .disabled(!isLoggedIn || isPaying)
+                    .focused($isTopUpFocused)
+
+                if let errorMessage {
+                    Text(errorMessage)
+                        .font(.footnote)
+                        .foregroundStyle(.red)
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal)
+                }
+
+                if let successMessage {
+                    Text(successMessage)
+                        .font(.footnote)
+                        .foregroundStyle(.green)
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal)
+                }
+
+                HStack(spacing: 12) {
+                    Button {
+                        if isLoggedIn {
+                            topUpLocal()
+                        } else {
+                            showAuthAlert = true
+                        }
+                    } label: {
+                        Text("Пополнить")
+                            .fontWeight(.semibold)
+                            .frame(maxWidth: .infinity)
+                            .padding()
+                            .background(isLoggedIn ? Color.green : Color.gray.opacity(0.4))
+                            .foregroundStyle(.white)
+                            .clipShape(RoundedRectangle(cornerRadius: 14))
+                    }
+                    .disabled(!isLoggedIn || isPaying)
+
+                    Button {
+                        if isLoggedIn {
+                            Task { await payWithPayBox() }
+                        } else {
+                            showAuthAlert = true
+                        }
+                    } label: {
+                        HStack {
+                            if isPaying { ProgressView().tint(.white) }
+                            Text("Картой (PayBox)")
+                        }
                         .fontWeight(.semibold)
                         .frame(maxWidth: .infinity)
                         .padding()
-                        .background(isLoggedIn ? Color.accentColor : Color.gray.opacity(0.4))
+                        .background(isLoggedIn ? Color.blue : Color.gray.opacity(0.4))
                         .foregroundStyle(.white)
                         .clipShape(RoundedRectangle(cornerRadius: 14))
+                    }
+                    .disabled(!isLoggedIn || isPaying)
                 }
-                .disabled(!isLoggedIn || isPaying)
+                .padding(.horizontal)
 
-                Button {
-                    if isLoggedIn {
-                        Task { await payWithPayBox() }
-                    } else {
-                        showAuthAlert = true
-                    }
-                } label: {
-                    HStack {
-                        if isPaying { ProgressView().tint(.white) }
-                        Text("Оплатить картой (PayBox)")
-                    }
-                    .fontWeight(.semibold)
-                    .frame(maxWidth: .infinity)
-                    .padding()
-                    .background(isLoggedIn ? Color.blue : Color.gray.opacity(0.4))
-                    .foregroundStyle(.white)
-                    .clipShape(RoundedRectangle(cornerRadius: 14))
-                }
-                .disabled(!isLoggedIn || isPaying)
+                Spacer(minLength: 20)
             }
-
-            Spacer()
+            .padding(.top, 16)
         }
-        .padding(.horizontal)
         .contentShape(Rectangle())
-        .onTapGesture {
-            isTopUpFocused = false
-        }
-        .onAppear {
-            // Подключаем реальный сервис PayBox поверх SDK
-            payboxService = RealPayBoxSDKService()
-        }
+        .onTapGesture { isTopUpFocused = false }
+        .onAppear { payboxService = RealPayBoxSDKService() }
         .toolbar {
             ToolbarItemGroup(placement: .keyboard) {
                 Spacer()
-                Button("Готово") {
-                    isTopUpFocused = false
-                }
+                Button("Готово") { isTopUpFocused = false }
             }
         }
         .alert("Войдите, чтобы пополнить баланс", isPresented: $showAuthAlert) {
             Button("ОК", role: .cancel) { }
-        } message: {
-            Text("Для пополнения баланса необходимо войти или зарегистрироваться.")
-        }
+        } message: { Text("Для пополнения баланса необходимо войти или зарегистрироваться.") }
     }
 
     private func topUpLocal() {
@@ -456,7 +489,6 @@ struct BalanceView: View {
         }
 
         do {
-            // 1) Создать “интент” на сервере (мок)
             let intent = try await paymentAPI.createIntent(
                 amountKZT: amountInt,
                 userId: userId(),
@@ -464,7 +496,6 @@ struct BalanceView: View {
                 phone: auth.currentUser?.phone
             )
 
-            // 2) Запустить PayBox SDK (реальный сервис)
             guard let payboxService else {
                 errorMessage = "Сервис оплаты не инициализирован."
                 return
@@ -473,7 +504,6 @@ struct BalanceView: View {
 
             switch result {
             case .success:
-                // 3) Опросить статус (в моке статус уже success не обязателен, но оставим логику)
                 try await Task.sleep(nanoseconds: 600_000_000)
                 let status = try await paymentAPI.fetchStatus(paymentId: intent.paymentId)
                 if status.status == .succeeded {
@@ -539,7 +569,7 @@ struct MainMapView: View {
     @State private var selectedCar: Car?
 
     var body: some View {
-        ZStack(alignment: .topTrailing) {
+        ZStack(alignment: .top) {
             Map(coordinateRegion: $region, interactionModes: .all, showsUserLocation: false, userTrackingMode: nil, annotationItems: cars) { car in
                 MapAnnotation(coordinate: car.coordinate) {
                     VStack(spacing: 4) {
@@ -566,28 +596,47 @@ struct MainMapView: View {
             }
             .ignoresSafeArea(edges: .bottom)
 
+            // Верхняя панель приветствия
             VStack(spacing: 8) {
-                Button {
-                    region = MKCoordinateRegion(center: almaty, span: MKCoordinateSpan(latitudeDelta: 0.08, longitudeDelta: 0.08))
-                } label: {
-                    Text("Алматы")
-                        .font(.footnote)
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 6)
-                        .background(.ultraThinMaterial, in: Capsule())
+                HStack {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Добро пожаловать в")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                        Text("AZV Motors")
+                            .font(.title3).bold()
+                    }
+                    Spacer()
+                    Image(systemName: "bolt.car.fill")
+                        .font(.title2)
+                        .foregroundStyle(.yellow)
                 }
+                .padding()
+                .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 16))
+                .padding(.horizontal)
 
-                Button {
-                    region = MKCoordinateRegion(center: newYork, span: MKCoordinateSpan(latitudeDelta: 0.08, longitudeDelta: 0.08))
-                } label: {
-                    Text("Нью‑Йорк")
-                        .font(.footnote)
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 6)
-                        .background(.ultraThinMaterial, in: Capsule())
+                HStack(spacing: 12) {
+                    Button {
+                        region = MKCoordinateRegion(center: almaty, span: MKCoordinateSpan(latitudeDelta: 0.08, longitudeDelta: 0.08))
+                    } label: {
+                        Label("Алматы", systemImage: "mappin.circle.fill")
+                            .padding(.horizontal, 12).padding(.vertical, 8)
+                            .background(.thinMaterial, in: Capsule())
+                    }
+
+                    Button {
+                        region = MKCoordinateRegion(center: newYork, span: MKCoordinateSpan(latitudeDelta: 0.08, longitudeDelta: 0.08))
+                    } label: {
+                        Label("Нью‑Йорк", systemImage: "airplane")
+                            .padding(.horizontal, 12).padding(.vertical, 8)
+                            .background(.thinMaterial, in: Capsule())
+                    }
+
+                    Spacer()
                 }
+                .padding(.horizontal)
             }
-            .padding()
+            .padding(.top, 8)
         }
         .sheet(item: $selectedCar) { car in
             CarDetailsView(car: car)
@@ -638,7 +687,6 @@ struct CarDetailsView: View {
                 Spacer()
 
                 Button {
-                    // В демо просто показать, что действие сработало
                 } label: {
                     Text("Забронировать")
                         .fontWeight(.semibold)
@@ -667,66 +715,83 @@ struct SettingsView: View {
     @AppStorage("userName") private var storedUserName: String = ""
 
     var body: some View {
-        Form {
-            if isLoggedIn {
-                Section("Профиль") {
-                    HStack {
-                        Text("Имя")
-                        Spacer()
-                        Text(storedUserName.isEmpty ? "—" : storedUserName)
-                            .foregroundStyle(.secondary)
-                    }
-                    HStack {
-                        Text("E‑mail")
-                        Spacer()
-                        Text(auth.currentUser?.email ?? "—")
-                            .foregroundStyle(.secondary)
-                    }
-                    HStack {
-                        Text("Телефон")
-                        Spacer()
-                        Text(formattedKZPhoneForDisplay(auth.currentUser?.phone ?? ""))
-                            .foregroundStyle(.secondary)
-                    }
+        ScrollView {
+            VStack(spacing: 16) {
+                // Карточка профиля
+                VStack(spacing: 8) {
+                    Image(systemName: "person.crop.circle.fill")
+                        .font(.system(size: 56))
+                        .foregroundStyle(.white)
+                        .shadow(color: .blue.opacity(0.4), radius: 10, x: 0, y: 0)
+                    Text(storedUserName.isEmpty ? "Гость" : storedUserName)
+                        .font(.title3).bold()
+                        .foregroundStyle(.white)
+                    Text(auth.currentUser?.email ?? "—")
+                        .foregroundStyle(.white.opacity(0.7))
                 }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 24)
+                .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 20))
+                .overlay(RoundedRectangle(cornerRadius: 20).stroke(.white.opacity(0.1), lineWidth: 1))
+                .padding(.horizontal)
 
-                Section("Кошелёк") {
-                    HStack {
-                        Text("Баланс")
-                        Spacer()
-                        Text(NumberFormatter.kzt.string(from: wallet.balanceKZT as NSDecimalNumber) ?? "")
-                            .fontWeight(.semibold)
-                    }
-                }
-
-                Section("Предпочтения") {
+                // Настройки
+                VStack(spacing: 12) {
                     Toggle("Тёмная тема", isOn: $isDarkMode)
+                        .tint(.blue)
+
                     Toggle("Уведомления", isOn: $notificationsEnabled)
-                    Picker("Язык", selection: $appLanguageRaw) {
-                        ForEach(AppLanguage.allCases) { lang in
-                            Text(lang.displayName).tag(lang.rawValue)
+                        .tint(.blue)
+
+                    HStack {
+                        Text("Язык")
+                        Spacer()
+                        Picker("", selection: $appLanguageRaw) {
+                            ForEach(AppLanguage.allCases) { lang in
+                                Text(lang.displayName).tag(lang.rawValue)
+                            }
                         }
+                        .pickerStyle(.menu)
                     }
                 }
+                .padding()
+                .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 16))
+                .overlay(RoundedRectangle(cornerRadius: 16).stroke(.white.opacity(0.08), lineWidth: 1))
+                .padding(.horizontal)
 
-                Section {
+                if isLoggedIn {
                     Button(role: .destructive) {
                         auth.logout()
                     } label: {
-                        Text("Выйти")
+                        Text("Выйти из аккаунта")
+                            .fontWeight(.semibold)
+                            .frame(maxWidth: .infinity)
+                            .padding()
+                            .background(Color.red)
+                            .foregroundStyle(.white)
+                            .clipShape(RoundedRectangle(cornerRadius: 14))
                     }
-                }
-            } else {
-                Section {
+                    .padding(.horizontal)
+                } else {
                     Button {
                         showAuth()
                     } label: {
-                        Text("Войти/Регистрация")
-                            .frame(maxWidth: .infinity, alignment: .center)
+                        Text("Войти / Регистрация")
+                            .fontWeight(.semibold)
+                            .frame(maxWidth: .infinity)
+                            .padding()
+                            .background(Color.accentColor)
+                            .foregroundStyle(.white)
+                            .clipShape(RoundedRectangle(cornerRadius: 14))
                     }
+                    .padding(.horizontal)
                 }
+
+                Spacer(minLength: 24)
             }
+            .padding(.top, 16)
         }
+        .navigationBarTitleDisplayMode(.inline)
     }
 
     private func formattedKZPhoneForDisplay(_ digits: String) -> String {

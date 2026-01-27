@@ -16,152 +16,174 @@ struct AuthFullScreenView: View {
     @State private var successMessage: String?
 
     var body: some View {
-        NavigationStack {
-            ZStack {
-                Color(.systemBackground).ignoresSafeArea()
+        ZStack {
+            // Общий градиент в стиле приложения
+            LinearGradient(colors: [Color.black, Color.blue.opacity(0.35)],
+                           startPoint: .topLeading,
+                           endPoint: .bottomTrailing)
+                .ignoresSafeArea()
 
-                ScrollView {
-                    VStack(spacing: 20) {
-                        // Hero image и логотип/заголовки
-                        VStack(spacing: 12) {
+            ScrollView {
+                VStack(spacing: 20) {
+                    // Hero блок
+                    VStack(spacing: 12) {
+                        ZStack {
+                            Circle()
+                                .fill(Color.white.opacity(0.06))
+                                .frame(width: 140, height: 140)
+                                .blur(radius: 2)
                             // Замените на Image("car_hero") после добавления ассета
                             Image(systemName: "car.fill")
                                 .resizable()
                                 .scaledToFit()
-                                .frame(height: 140)
-                                .foregroundStyle(Color.accentColor)
-                                .padding(.top, 20)
-
-                            Text("AZV MOTORS")
-                                .font(.system(size: 22, weight: .bold))
-                            Text("PREMIUM CAR SHARING SERVICE")
-                                .font(.footnote)
-                                .foregroundStyle(.secondary)
-                                .tracking(1)
+                                .frame(height: 80)
+                                .foregroundStyle(.white)
+                                .shadow(color: .blue.opacity(0.6), radius: 12, x: 0, y: 0)
                         }
+                        Text("PASSION MOTORS")
+                            .font(.system(size: 26, weight: .bold, design: .rounded))
+                            .foregroundStyle(.white.opacity(0.95))
+                        Text("PREMIUM CAR SHARING SERVICE")
+                            .font(.footnote)
+                            .foregroundStyle(.white.opacity(0.7))
+                            .tracking(1)
+                    }
+                    .padding(.top, 28)
 
-                        VStack(spacing: 6) {
-                            Text("Стиль. Мощь. Совершенство.")
-                                .font(.title3).bold()
-                                .multilineTextAlignment(.center)
-                            Text("Вы выбираете — мы реализуем. Арендуйте премиум‑авто когда хотите и на сколько хотите.")
-                                .font(.subheadline)
-                                .foregroundStyle(.secondary)
-                                .multilineTextAlignment(.center)
-                                .padding(.horizontal)
-                        }
+                    // Подзаголовок
+                    VStack(spacing: 6) {
+                        Text("Стиль. Мощь. Совершенство.")
+                            .font(.title3).bold()
+                            .foregroundStyle(.white)
+                            .multilineTextAlignment(.center)
+                        Text("Вы выбираете — мы реализуем. Арендуйте премиум‑авто когда хотите и на сколько хотите.")
+                            .font(.subheadline)
+                            .foregroundStyle(.white.opacity(0.7))
+                            .multilineTextAlignment(.center)
+                            .padding(.horizontal)
+                    }
 
-                        // Переключатель Вход/Регистрация
-                        Picker("", selection: $isSignUp) {
-                            Text("Вход").tag(false)
-                            Text("Регистрация").tag(true)
-                        }
-                        .pickerStyle(.segmented)
-                        .padding(.horizontal)
+                    // Переключатель Вход/Регистрация
+                    Picker("", selection: $isSignUp) {
+                        Text("Вход").tag(false)
+                        Text("Регистрация").tag(true)
+                    }
+                    .pickerStyle(.segmented)
+                    .padding(.horizontal)
+                    .onChange(of: isSignUp) {
+                        errorMessage = nil
+                        successMessage = nil
+                    }
 
-                        // Форма
-                        VStack(spacing: 14) {
-                            if isSignUp {
-                                TextField("Имя", text: $name)
-                                    .textContentType(.name)
-                                    .autocapitalization(.words)
-                                    .disableAutocorrection(true)
-                                    .padding()
-                                    .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 12))
-                                    .onChange(of: name) { errorMessage = nil }
+                    // Форма в “стеклянной” карточке
+                    VStack(spacing: 14) {
+                        if isSignUp {
+                            TextField("Имя", text: $name)
+                                .textContentType(.name)
+                                .autocapitalization(.words)
+                                .disableAutocorrection(true)
+                                .padding()
+                                .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 14))
+                                .overlay(RoundedRectangle(cornerRadius: 14).stroke(Color.white.opacity(0.1), lineWidth: 1))
+                                .onChange(of: name) { errorMessage = nil }
 
-                                TextField("+7 XXX XXX XX XX", text: $phone)
-                                    .keyboardType(.phonePad)
-                                    .textContentType(.telephoneNumber)
-                                    .autocapitalization(.none)
-                                    .disableAutocorrection(true)
-                                    .padding()
-                                    .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 12))
-                                    .onChange(of: phone) { newValue in
-                                        errorMessage = nil
-                                        phone = formatKZPhone(newValue)
-                                    }
-                            }
-
-                            TextField("E‑mail", text: $email)
-                                .keyboardType(.emailAddress)
-                                .textContentType(.emailAddress)
+                            TextField("+7 XXX XXX XX XX", text: $phone)
+                                .keyboardType(.phonePad)
+                                .textContentType(.telephoneNumber)
                                 .autocapitalization(.none)
                                 .disableAutocorrection(true)
                                 .padding()
-                                .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 12))
-                                .onChange(of: email) { errorMessage = nil }
-
-                            HStack {
-                                Group {
-                                    if isPasswordVisible {
-                                        TextField("Пароль", text: $password)
-                                    } else {
-                                        SecureField("Пароль", text: $password)
-                                    }
+                                .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 14))
+                                .overlay(RoundedRectangle(cornerRadius: 14).stroke(Color.white.opacity(0.1), lineWidth: 1))
+                                .onChange(of: phone) { newValue in
+                                    errorMessage = nil
+                                    phone = formatKZPhone(newValue)
                                 }
-                                .textContentType(.password)
-                                .autocapitalization(.none)
-                                .disableAutocorrection(true)
-                                .onChange(of: password) { errorMessage = nil }
+                        }
 
-                                Button {
-                                    isPasswordVisible.toggle()
-                                } label: {
-                                    Image(systemName: isPasswordVisible ? "eye.slash" : "eye")
-                                        .foregroundStyle(.secondary)
+                        TextField("E‑mail", text: $email)
+                            .keyboardType(.emailAddress)
+                            .textContentType(.emailAddress)
+                            .autocapitalization(.none)
+                            .disableAutocorrection(true)
+                            .padding()
+                            .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 14))
+                            .overlay(RoundedRectangle(cornerRadius: 14).stroke(Color.white.opacity(0.1), lineWidth: 1))
+                            .onChange(of: email) { errorMessage = nil }
+
+                        HStack {
+                            Group {
+                                if isPasswordVisible {
+                                    TextField("Пароль", text: $password)
+                                } else {
+                                    SecureField("Пароль", text: $password)
                                 }
                             }
-                            .padding()
-                            .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 12))
-                        }
-                        .padding(.horizontal)
+                            .textContentType(.password)
+                            .autocapitalization(.none)
+                            .disableAutocorrection(true)
+                            .onChange(of: password) { errorMessage = nil }
 
-                        if let errorMessage {
-                            Text(errorMessage)
-                                .font(.footnote)
-                                .foregroundStyle(.red)
-                                .multilineTextAlignment(.center)
-                                .padding(.horizontal)
-                        }
-
-                        if let successMessage {
-                            Text(successMessage)
-                                .font(.footnote)
-                                .foregroundStyle(.green)
-                                .multilineTextAlignment(.center)
-                                .padding(.horizontal)
-                        }
-
-                        Button {
-                            submit()
-                        } label: {
-                            HStack {
-                                if isLoading { ProgressView().tint(.white) }
-                                Text(isSignUp ? "Зарегистрироваться" : "Войти")
-                                    .fontWeight(.semibold)
+                            Button {
+                                isPasswordVisible.toggle()
+                            } label: {
+                                Image(systemName: isPasswordVisible ? "eye.slash" : "eye")
+                                    .foregroundStyle(.white.opacity(0.8))
                             }
-                            .frame(maxWidth: .infinity)
-                            .padding()
-                            .background(isActionEnabled ? Color.accentColor : Color.gray.opacity(0.4))
-                            .foregroundStyle(.white)
-                            .clipShape(RoundedRectangle(cornerRadius: 14))
                         }
-                        .disabled(!isActionEnabled || isLoading)
-                        .padding(.horizontal)
+                        .padding()
+                        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 14))
+                        .overlay(RoundedRectangle(cornerRadius: 14).stroke(Color.white.opacity(0.1), lineWidth: 1))
+                    }
+                    .padding(.horizontal)
 
-                        Text("Нажимая «\(isSignUp ? "Зарегистрироваться" : "Войти")», вы соглашаетесь с Условиями оферты и Политикой конфиденциальности.")
+                    if let errorMessage {
+                        Text(errorMessage)
                             .font(.footnote)
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(.red)
                             .multilineTextAlignment(.center)
                             .padding(.horizontal)
-                            .padding(.bottom, 24)
                     }
+
+                    if let successMessage {
+                        Text(successMessage)
+                            .font(.footnote)
+                            .foregroundStyle(.green)
+                            .multilineTextAlignment(.center)
+                            .padding(.horizontal)
+                    }
+
+                    // Кнопка действия
+                    Button {
+                        submit()
+                    } label: {
+                        HStack {
+                            if isLoading { ProgressView().tint(.white) }
+                            Text(isSignUp ? "Зарегистрироваться" : "Войти")
+                                .fontWeight(.semibold)
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding()
+                        .background(isActionEnabled ? Color.blue : Color.gray.opacity(0.4))
+                        .foregroundStyle(.white)
+                        .clipShape(RoundedRectangle(cornerRadius: 14))
+                        .shadow(color: .blue.opacity(0.35), radius: 12, x: 0, y: 6)
+                    }
+                    .disabled(!isActionEnabled || isLoading)
+                    .padding(.horizontal)
+
+                    // Юридический текст
+                    Text("Нажимая «\(isSignUp ? "Зарегистрироваться" : "Войти")», вы соглашаетесь с Условиями оферты и Политикой конфиденциальности.")
+                        .font(.footnote)
+                        .foregroundStyle(.white.opacity(0.7))
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal)
+                        .padding(.bottom, 28)
                 }
             }
-            .navigationBarHidden(true)
         }
-        .interactiveDismissDisabled(true) // нельзя свайпом закрыть, пока не войдёт
+        .interactiveDismissDisabled(true) // нельзя закрыть до авторизации
+        .navigationBarHidden(true)
     }
 
     private var isActionEnabled: Bool {
@@ -213,7 +235,7 @@ struct AuthFullScreenView: View {
                     storedUserName = auth.currentUser?.name ?? ""
                     successMessage = "Вход выполнен!"
                 }
-                // Как только авторизован — фуллскрин закроется, потому что ContentView следит за auth.isLoggedIn
+                // Закрытие экрана произойдёт автоматически, так как ContentView следит за auth.isLoggedIn
             } catch {
                 errorMessage = (error as? LocalizedError)?.errorDescription ?? "Ошибка входа/регистрации."
             }
