@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		73362BD52F2296FF00D09481 /* PayboxSDKStubs.swift in Sources */ = {isa = PBXBuildFile; fileRef = 73362BD42F2296FF00D09481 /* PayboxSDKStubs.swift */; };
+		7393B81A2F28AD7700CF32A4 /* AuthFullScreenView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7393B8192F28AD7700CF32A4 /* AuthFullScreenView.swift */; };
 		73A1044B2F2101DC00640BC7 /* PaymentAPI.swift in Sources */ = {isa = PBXBuildFile; fileRef = 73A1044A2F2101DC00640BC7 /* PaymentAPI.swift */; };
 		73A1044D2F2101DD00640BC7 /* PayBoxSDKService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 73A1044C2F2101DD00640BC7 /* PayBoxSDKService.swift */; };
 		73A1044F2F2104C000640BC7 /* PayboxConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = 73A1044E2F2104C000640BC7 /* PayboxConfig.swift */; };
@@ -17,6 +18,7 @@
 
 /* Begin PBXFileReference section */
 		73362BD42F2296FF00D09481 /* PayboxSDKStubs.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PayboxSDKStubs.swift; sourceTree = "<group>"; };
+		7393B8192F28AD7700CF32A4 /* AuthFullScreenView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthFullScreenView.swift; sourceTree = "<group>"; };
 		73A104302F20B91F00640BC7 /* car_rent.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = car_rent.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		73A1044A2F2101DC00640BC7 /* PaymentAPI.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PaymentAPI.swift; sourceTree = "<group>"; };
 		73A1044C2F2101DD00640BC7 /* PayBoxSDKService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PayBoxSDKService.swift; sourceTree = "<group>"; };
@@ -55,6 +57,7 @@
 				73A104502F2104C200640BC7 /* PaymentWebContainer.swift */,
 				73A104522F2104CB00640BC7 /* RealPayBoxSDKService.swift */,
 				73362BD42F2296FF00D09481 /* PayboxSDKStubs.swift */,
+				7393B8192F28AD7700CF32A4 /* AuthFullScreenView.swift */,
 			);
 			sourceTree = "<group>";
 		};
@@ -145,6 +148,7 @@
 				73A104512F2104C200640BC7 /* PaymentWebContainer.swift in Sources */,
 				73362BD52F2296FF00D09481 /* PayboxSDKStubs.swift in Sources */,
 				73A1044B2F2101DC00640BC7 /* PaymentAPI.swift in Sources */,
+				7393B81A2F28AD7700CF32A4 /* AuthFullScreenView.swift in Sources */,
 				73A1044D2F2101DD00640BC7 /* PayBoxSDKService.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

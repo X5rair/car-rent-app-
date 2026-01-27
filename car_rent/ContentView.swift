@@ -185,7 +185,7 @@ final class AuthStore: ObservableObject {
 
 struct ContentView: View {
     @StateObject private var auth = AuthStore()
-    @State private var showAuthSheet = false
+    @State private var showAuthFullScreen = false
     @StateObject private var wallet = WalletStore()
     @AppStorage("isDarkMode") private var isDarkMode = false
     @AppStorage("appLanguage") private var appLanguageRaw: String = AppLanguage.system.rawValue
@@ -216,21 +216,11 @@ struct ContentView: View {
                             .toolbar {
                                 ToolbarItem(placement: .topBarTrailing) {
                                     if auth.isLoggedIn {
-                                        Button("Выйти") {
-                                            auth.logout()
-                                        }
+                                        Button("Выйти") { auth.logout() }
                                     } else {
-                                        Button("Войти/Регистрация") {
-                                            showAuthSheet = true
-                                        }
+                                        Button("Войти/Регистрация") { showAuthFullScreen = true }
                                     }
                                 }
-                            }
-                            .sheet(isPresented: $showAuthSheet) {
-                                LoginSheetView(isLoggedIn: .constant(false)) {
-                                    showAuthSheet = false
-                                }
-                                .environmentObject(auth)
                             }
                     }
                     .tabItem {
@@ -255,26 +245,25 @@ struct ContentView: View {
                         Label("Настройки", systemImage: "gearshape")
                     }
                 }
-                // Автопоказ авторизации, если не залогинен
                 .onAppear {
                     if !auth.isLoggedIn {
-                        showAuthSheet = true
+                        showAuthFullScreen = true
                     }
                 }
-                // Реакция на изменения состояния входа
                 .onChange(of: auth.isLoggedIn) { loggedIn in
-                    if loggedIn {
-                        showAuthSheet = false
-                    } else {
-                        showAuthSheet = true
-                    }
+                    showAuthFullScreen = !loggedIn
+                }
+                .fullScreenCover(isPresented: $showAuthFullScreen) {
+                    AuthFullScreenView()
+                        .environmentObject(auth)
+                        .preferredColorScheme(isDarkMode ? .dark : .light)
                 }
             }
         }
         .environmentObject(wallet)
         .environmentObject(auth)
         .environment(\.isLoggedIn, auth.isLoggedIn)
-        .environment(\.showAuth, { showAuthSheet = true })
+        .environment(\.showAuth, { showAuthFullScreen = true })
         .preferredColorScheme(isDarkMode ? .dark : .light)
         .environment(\.locale, currentLanguage.locale ?? Locale.autoupdatingCurrent)
     }
@@ -312,264 +301,7 @@ struct SplashView: View {
     }
 }
 
-struct LoginSheetView: View {
-    @Binding var isLoggedIn: Bool
-    var onClose: () -> Void
-
-    @EnvironmentObject private var auth: AuthStore
-    @AppStorage("userName") private var storedUserName: String = ""
-
-    @State private var isSignUp = false
-    @State private var name = ""
-    @State private var email = ""
-    @State private var phone = ""
-    @State private var password = ""
-    @State private var isPasswordVisible = false
-
-    @State private var isLoading = false
-    @State private var errorMessage: String?
-    @State private var successMessage: String?
-
-    var body: some View {
-        NavigationStack {
-            VStack(spacing: 24) {
-                // Картинка машины над кнопками/формой
-                VStack(spacing: 12) {
-                    // Замените на Image("car_hero") после добавления ассета
-                    Image(systemName: "car.fill")
-                        .resizable()
-                        .scaledToFit()
-                        .frame(height: 96)
-                        .foregroundStyle(Color.accentColor)
-                        .padding(.top, 8)
-
-                    Text(isSignUp ? "Регистрация" : "Вход")
-                        .font(.title.bold())
-                    Text(isSignUp ? "Создайте аккаунт" : "Войдите в аккаунт, чтобы арендовать авто")
-                        .foregroundStyle(.secondary)
-                        .multilineTextAlignment(.center)
-                }
-
-                Picker("", selection: $isSignUp) {
-                    Text("Вход").tag(false)
-                    Text("Регистрация").tag(true)
-                }
-                .pickerStyle(.segmented)
-                .padding(.horizontal)
-                .onChange(of: isSignUp) {
-                    errorMessage = nil
-                    successMessage = nil
-                }
-
-                VStack(spacing: 14) {
-                    if isSignUp {
-                        TextField("Имя", text: $name)
-                            .textContentType(.name)
-                            .autocapitalization(.words)
-                            .disableAutocorrection(true)
-                            .padding()
-                            .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 12))
-                            .onChange(of: name) { errorMessage = nil }
-
-                        TextField("+7 XXX XXX XX XX", text: $phone)
-                            .keyboardType(.phonePad)
-                            .textContentType(.telephoneNumber)
-                            .autocapitalization(.none)
-                            .disableAutocorrection(true)
-                            .padding()
-                            .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 12))
-                            .onChange(of: phone) { newValue in
-                                errorMessage = nil
-                                phone = formatKZPhone(newValue)
-                            }
-                    }
-
-                    TextField("E‑mail", text: $email)
-                        .keyboardType(.emailAddress)
-                        .textContentType(.emailAddress)
-                        .autocapitalization(.none)
-                        .disableAutocorrection(true)
-                        .padding()
-                        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 12))
-                        .onChange(of: email) { errorMessage = nil }
-
-                    HStack {
-                        Group {
-                            if isPasswordVisible {
-                                TextField("Пароль", text: $password)
-                            } else {
-                                SecureField("Пароль", text: $password)
-                            }
-                        }
-                        .textContentType(.password)
-                        .autocapitalization(.none)
-                        .disableAutocorrection(true)
-                        .onChange(of: password) { errorMessage = nil }
-
-                        Button {
-                            isPasswordVisible.toggle()
-                        } label: {
-                            Image(systemName: isPasswordVisible ? "eye.slash" : "eye")
-                                .foregroundStyle(.secondary)
-                        }
-                    }
-                    .padding()
-                    .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 12))
-                }
-                .padding(.horizontal)
-
-                if let errorMessage {
-                    Text(errorMessage)
-                        .font(.footnote)
-                        .foregroundStyle(.red)
-                        .multilineTextAlignment(.center)
-                        .padding(.horizontal)
-                }
-
-                if let successMessage {
-                    Text(successMessage)
-                        .font(.footnote)
-                        .foregroundStyle(.green)
-                        .multilineTextAlignment(.center)
-                        .padding(.horizontal)
-                }
-
-                Button {
-                    submit()
-                } label: {
-                    HStack {
-                        if isLoading {
-                            ProgressView()
-                                .tint(.white)
-                        }
-                        Text(isSignUp ? "Зарегистрироваться" : "Войти")
-                            .fontWeight(.semibold)
-                    }
-                    .frame(maxWidth: .infinity)
-                    .padding()
-                    .background(isActionEnabled ? Color.accentColor : Color.gray.opacity(0.4))
-                    .foregroundStyle(.white)
-                    .clipShape(RoundedRectangle(cornerRadius: 14))
-                }
-                .disabled(!isActionEnabled || isLoading)
-                .padding(.horizontal)
-
-                Spacer(minLength: 12)
-            }
-            .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
-                    Button("Закрыть") { onClose() }
-                }
-            }
-        }
-        .presentationDetents([.medium, .large])
-        .presentationDragIndicator(.visible)
-    }
-
-    private var isActionEnabled: Bool {
-        if isSignUp {
-            return !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-            && isValidEmail(email)
-            && isValidKZPhone(phone)
-            && password.count >= 8
-        } else {
-            return isValidEmail(email) && password.count >= 8
-        }
-    }
-
-    private func submit() {
-        errorMessage = nil
-        successMessage = nil
-
-        guard isActionEnabled else {
-            if isSignUp {
-                var reasons: [String] = []
-                if name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { reasons.append("имя пустое") }
-                if !isValidEmail(email) { reasons.append("e‑mail некорректен") }
-                if !isValidKZPhone(phone) { reasons.append("телефон некорректен (+7 XXX XXX XX XX)") }
-                if password.count < 8 { reasons.append("пароль меньше 8 символов") }
-                errorMessage = "Проверьте данные: " + reasons.joined(separator: ", ") + "."
-            } else {
-                var reasons: [String] = []
-                if !isValidEmail(email) { reasons.append("e‑mail некорректен") }
-                if password.count < 8 { reasons.append("пароль меньше 8 символов") }
-                errorMessage = "Проверьте данные: " + reasons.joined(separator: ", ") + "."
-            }
-            return
-        }
-
-        isLoading = true
-
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
-            defer { isLoading = false }
-            do {
-                if isSignUp {
-                    try auth.register(name: name.trimmingCharacters(in: .whitespacesAndNewlines),
-                                      email: email,
-                                      password: password,
-                                      phone: normalizedKZPhone(phone))
-                    storedUserName = auth.currentUser?.name ?? ""
-                    successMessage = "Регистрация успешна! Добро пожаловать, \(storedUserName.isEmpty ? "водитель" : storedUserName)."
-                } else {
-                    try auth.login(email: email, password: password)
-                    storedUserName = auth.currentUser?.name ?? ""
-                    successMessage = "Вход выполнен!"
-                }
-                onClose()
-            } catch {
-                errorMessage = (error as? LocalizedError)?.errorDescription ?? "Ошибка входа/регистрации."
-            }
-        }
-    }
-
-    private func isValidEmail(_ email: String) -> Bool {
-        let trimmed = email.trimmingCharacters(in: .whitespacesAndNewlines)
-        return trimmed.contains("@") && trimmed.contains(".") && trimmed.count >= 5
-    }
-
-    private func isValidKZPhone(_ input: String) -> Bool {
-        let digits = normalizedKZPhone(input)
-        return digits.count == 11 && digits.first == "7"
-    }
-
-    private func normalizedKZPhone(_ input: String) -> String {
-        var digits = input.filter(\.isNumber)
-        if digits.first == "8" && digits.count == 11 {
-            digits.removeFirst()
-            digits = "7" + digits
-        }
-        if digits.count > 11 {
-            digits = String(digits.prefix(11))
-        }
-        return digits
-    }
-
-    private func formatKZPhone(_ input: String) -> String {
-        var digits = input.filter(\.isNumber)
-        if digits.first == "8" {
-            digits.removeFirst()
-            digits = "7" + digits
-        }
-        if digits.first != "7" {
-            digits = (digits.first == nil) ? "7" : "7" + digits.drop(while: { $0 == "7" })
-        }
-        if digits.count > 11 {
-            digits = String(digits.prefix(11))
-        }
-        var result = "+7"
-        let rest = digits.dropFirst()
-        func chunk(_ start: Int, _ len: Int) -> String {
-            let s = rest.index(rest.startIndex, offsetBy: min(start, rest.count), limitedBy: rest.endIndex) ?? rest.endIndex
-            let e = rest.index(s, offsetBy: min(len, rest.distance(from: s, to: rest.endIndex)), limitedBy: rest.endIndex) ?? rest.endIndex
-            return String(rest[s..<e])
-        }
-        let g1 = chunk(0, 3); if !g1.isEmpty { result += " " + g1 }
-        let g2 = chunk(3, 3); if !g2.isEmpty { result += " " + g2 }
-        let g3 = chunk(6, 2); if !g3.isEmpty { result += " " + g3 }
-        let g4 = chunk(8, 2); if !g4.isEmpty { result += " " + g4 }
-        return result
-    }
-}
+// MARK: - Восстановленные экраны
 
 struct BalanceView: View {
     @EnvironmentObject private var wallet: WalletStore
@@ -769,8 +501,6 @@ struct BalanceView: View {
         return formatter.string(from: value as NSDecimalNumber) ?? "\(value) KZT"
     }
 }
-
-// MARK: - Car map demo
 
 struct Car: Identifiable {
     let id: UUID
