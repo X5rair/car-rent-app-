@@ -103,7 +103,6 @@ final class AuthStore: ObservableObject {
         let record = UserRecord(name: name, email: emailKey, passwordHash: Self.hash(password), phone: phone)
         users[emailKey] = record
         saveUsers()
-        // Автовход после регистрации
         setLoggedIn(user: record)
     }
 
@@ -124,13 +123,10 @@ final class AuthStore: ObservableObject {
         isLoggedIn = false
     }
 
-    // MARK: - Private
-
     private func setLoggedIn(user: UserRecord) {
         currentUser = user
         currentUserEmail = user.email
         isLoggedIn = true
-        // Сохраним имя для SettingsView совместимости
         UserDefaults.standard.set(user.name, forKey: "userName")
     }
 
@@ -146,7 +142,6 @@ final class AuthStore: ObservableObject {
         }
         currentUser = user
         isLoggedIn = true
-        // синхроним имя
         UserDefaults.standard.set(user.name, forKey: "userName")
     }
 
@@ -304,7 +299,6 @@ struct SplashView: View {
 }
 
 struct LoginSheetView: View {
-    // isLoggedIn биндинг оставлен для совместимости сигнатуры, но не используется — авторизация идёт через AuthStore.
     @Binding var isLoggedIn: Bool
     var onClose: () -> Void
 
@@ -506,80 +500,51 @@ struct LoginSheetView: View {
         }
     }
 
-    // MARK: - Validation helpers
-
     private func isValidEmail(_ email: String) -> Bool {
         let trimmed = email.trimmingCharacters(in: .whitespacesAndNewlines)
         return trimmed.contains("@") && trimmed.contains(".") && trimmed.count >= 5
     }
 
-    // Валидный казахстанский номер: +7 и ровно 11 цифр (включая ведущую 7), формат +7 XXX XXX XX XX
     private func isValidKZPhone(_ input: String) -> Bool {
-        let digits = input.filter(\.isNumber)
-        // допускаем, что пользователь ввёл 8XXXXXXXXXX -> преобразуем в +7
-        if digits.count == 11, digits.first == "7" {
-            return true
-        }
-        // также примем 12 цифр, если первая 7 и есть ведущий + (редкий кейс при парсинге)
-        return false
+        let digits = normalizedKZPhone(input)
+        return digits.count == 11 && digits.first == "7"
     }
 
-    // Нормализуем к виду: только цифры, заменяем ведущую 8 на 7, возвращаем строку цифр без плюса
     private func normalizedKZPhone(_ input: String) -> String {
         var digits = input.filter(\.isNumber)
         if digits.first == "8" && digits.count == 11 {
             digits.removeFirst()
             digits = "7" + digits
         }
-        // оставляем ровно 11 цифр начиная с 7, если больше — отрежем лишнее
         if digits.count > 11 {
             digits = String(digits.prefix(11))
         }
         return digits
     }
 
-    // Форматирование ввода в маску +7 XXX XXX XX XX
     private func formatKZPhone(_ input: String) -> String {
         var digits = input.filter(\.isNumber)
-
-        // Если начинается с 8 и длина 11 — конвертируем в 7
         if digits.first == "8" {
             digits.removeFirst()
             digits = "7" + digits
         }
-
-        // Всегда начинаем с '7'
         if digits.first != "7" {
             digits = (digits.first == nil) ? "7" : "7" + digits.drop(while: { $0 == "7" })
         }
-
-        // Ограничим максимум 11 цифрами
         if digits.count > 11 {
             digits = String(digits.prefix(11))
         }
-
-        // Собираем формат: +7 XXX XXX XX XX
         var result = "+7"
-        let rest = digits.dropFirst() // без первой '7'
-
+        let rest = digits.dropFirst()
         func chunk(_ start: Int, _ len: Int) -> String {
             let s = rest.index(rest.startIndex, offsetBy: min(start, rest.count), limitedBy: rest.endIndex) ?? rest.endIndex
             let e = rest.index(s, offsetBy: min(len, rest.distance(from: s, to: rest.endIndex)), limitedBy: rest.endIndex) ?? rest.endIndex
             return String(rest[s..<e])
         }
-
-        let g1 = chunk(0, 3)
-        if !g1.isEmpty { result += " " + g1 }
-
-        let g2 = chunk(3, 3)
-        if !g2.isEmpty { result += " " + g2 }
-
-        let g3 = chunk(6, 2)
-        if !g3.isEmpty { result += " " + g3 }
-
-        let g4 = chunk(8, 2)
-        if !g4.isEmpty { result += " " + g4 }
-
+        let g1 = chunk(0, 3); if !g1.isEmpty { result += " " + g1 }
+        let g2 = chunk(3, 3); if !g2.isEmpty { result += " " + g2 }
+        let g3 = chunk(6, 2); if !g3.isEmpty { result += " " + g3 }
+        let g4 = chunk(8, 2); if !g4.isEmpty { result += " " + g4 }
         return result
     }
 }
@@ -587,11 +552,17 @@ struct LoginSheetView: View {
 struct BalanceView: View {
     @EnvironmentObject private var wallet: WalletStore
     @Environment(\.isLoggedIn) private var isLoggedIn
+    @EnvironmentObject private var auth: AuthStore
     @State private var topUpText: String = ""
     @State private var errorMessage: String?
     @State private var successMessage: String?
     @State private var showAuthAlert = false
     @FocusState private var isTopUpFocused: Bool
+
+    // Моки оплаты
+    @State private var paymentAPI = MockPaymentAPI()
+    @State private var payboxService: PayBoxSDKService? = nil
+    @State private var isPaying = false
 
     var body: some View {
         VStack(spacing: 20) {
@@ -608,7 +579,7 @@ struct BalanceView: View {
                 .keyboardType(.numberPad)
                 .padding()
                 .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 12))
-                .disabled(!isLoggedIn)
+                .disabled(!isLoggedIn || isPaying)
                 .focused($isTopUpFocused)
 
             if let errorMessage {
@@ -627,22 +598,44 @@ struct BalanceView: View {
                     .padding(.horizontal)
             }
 
-            Button {
-                if isLoggedIn {
-                    topUp()
-                } else {
-                    showAuthAlert = true
+            HStack(spacing: 12) {
+                Button {
+                    if isLoggedIn {
+                        topUpLocal()
+                    } else {
+                        showAuthAlert = true
+                    }
+                } label: {
+                    Text("Пополнить (локально)")
+                        .fontWeight(.semibold)
+                        .frame(maxWidth: .infinity)
+                        .padding()
+                        .background(isLoggedIn ? Color.accentColor : Color.gray.opacity(0.4))
+                        .foregroundStyle(.white)
+                        .clipShape(RoundedRectangle(cornerRadius: 14))
                 }
-            } label: {
-                Text("Пополнить")
+                .disabled(!isLoggedIn || isPaying)
+
+                Button {
+                    if isLoggedIn {
+                        Task { await payWithPayBox() }
+                    } else {
+                        showAuthAlert = true
+                    }
+                } label: {
+                    HStack {
+                        if isPaying { ProgressView().tint(.white) }
+                        Text("Оплатить картой (PayBox)")
+                    }
                     .fontWeight(.semibold)
                     .frame(maxWidth: .infinity)
                     .padding()
-                    .background(isLoggedIn ? Color.accentColor : Color.gray.opacity(0.4))
+                    .background(isLoggedIn ? Color.blue : Color.gray.opacity(0.4))
                     .foregroundStyle(.white)
                     .clipShape(RoundedRectangle(cornerRadius: 14))
+                }
+                .disabled(!isLoggedIn || isPaying)
             }
-            .disabled(!isLoggedIn)
 
             Spacer()
         }
@@ -650,6 +643,10 @@ struct BalanceView: View {
         .contentShape(Rectangle())
         .onTapGesture {
             isTopUpFocused = false
+        }
+        .onAppear {
+            // Подключаем реальный сервис PayBox поверх SDK
+            payboxService = RealPayBoxSDKService()
         }
         .toolbar {
             ToolbarItemGroup(placement: .keyboard) {
@@ -666,7 +663,7 @@ struct BalanceView: View {
         }
     }
 
-    private func topUp() {
+    private func topUpLocal() {
         errorMessage = nil
         successMessage = nil
 
@@ -681,6 +678,65 @@ struct BalanceView: View {
         successMessage = "Баланс пополнен на \(formatKZT(amount))."
         topUpText = ""
         isTopUpFocused = false
+    }
+
+    private func payAmountInt() -> Int? {
+        let digits = topUpText.filter { $0.isNumber }
+        guard !digits.isEmpty, let amountInt = Int(digits), amountInt > 0 else { return nil }
+        return amountInt
+    }
+
+    private func userId() -> String {
+        auth.currentUser?.email ?? "guest"
+    }
+
+    private func payWithPayBox() async {
+        errorMessage = nil
+        successMessage = nil
+        isPaying = true
+        defer { isPaying = false }
+
+        guard let amountInt = payAmountInt() else {
+            errorMessage = "Введите корректную сумму (только числа)."
+            return
+        }
+
+        do {
+            // 1) Создать “интент” на сервере (мок)
+            let intent = try await paymentAPI.createIntent(
+                amountKZT: amountInt,
+                userId: userId(),
+                email: auth.currentUser?.email,
+                phone: auth.currentUser?.phone
+            )
+
+            // 2) Запустить PayBox SDK (реальный сервис)
+            guard let payboxService else {
+                errorMessage = "Сервис оплаты не инициализирован."
+                return
+            }
+            let result = await payboxService.startPayment(intent: intent)
+
+            switch result {
+            case .success:
+                // 3) Опросить статус (в моке статус уже success не обязателен, но оставим логику)
+                try await Task.sleep(nanoseconds: 600_000_000)
+                let status = try await paymentAPI.fetchStatus(paymentId: intent.paymentId)
+                if status.status == .succeeded {
+                    wallet.balanceKZT += Decimal(status.amountKZT)
+                    successMessage = "Оплата прошла успешно на \(formatKZT(Decimal(status.amountKZT)))."
+                    topUpText = ""
+                } else {
+                    errorMessage = "Оплата не подтверждена (статус: \(status.status.rawValue))."
+                }
+            case .canceled:
+                errorMessage = "Оплата отменена."
+            case .failure(let msg):
+                errorMessage = "Ошибка оплаты: \(msg)"
+            }
+        } catch {
+            errorMessage = "Не удалось выполнить оплату: \(error.localizedDescription)"
+        }
     }
 
     private func formatKZT(_ value: Decimal) -> String {
@@ -719,7 +775,6 @@ struct MainMapView: View {
         span: MKCoordinateSpan(latitudeDelta: 0.08, longitudeDelta: 0.08)
     )
 
-    // Один пример автомобиля в Алматы
     @State private var cars: [Car] = [
         Car(
             title: "Kia Rio",
@@ -924,7 +979,6 @@ struct SettingsView: View {
 
     private func formattedKZPhoneForDisplay(_ digits: String) -> String {
         guard digits.count == 11, digits.first == "7" else { return digits.isEmpty ? "—" : digits }
-        // форматируем 7XXXXXXXXXX в +7 XXX XXX XX XX
         let rest = digits.dropFirst()
         func chunk(_ start: Int, _ len: Int) -> String {
             let s = rest.index(rest.startIndex, offsetBy: min(start, rest.count), limitedBy: rest.endIndex) ?? rest.endIndex

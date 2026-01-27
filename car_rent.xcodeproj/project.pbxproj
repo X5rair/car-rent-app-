@@ -6,8 +6,23 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		73362BD52F2296FF00D09481 /* PayboxSDKStubs.swift in Sources */ = {isa = PBXBuildFile; fileRef = 73362BD42F2296FF00D09481 /* PayboxSDKStubs.swift */; };
+		73A1044B2F2101DC00640BC7 /* PaymentAPI.swift in Sources */ = {isa = PBXBuildFile; fileRef = 73A1044A2F2101DC00640BC7 /* PaymentAPI.swift */; };
+		73A1044D2F2101DD00640BC7 /* PayBoxSDKService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 73A1044C2F2101DD00640BC7 /* PayBoxSDKService.swift */; };
+		73A1044F2F2104C000640BC7 /* PayboxConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = 73A1044E2F2104C000640BC7 /* PayboxConfig.swift */; };
+		73A104512F2104C200640BC7 /* PaymentWebContainer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 73A104502F2104C200640BC7 /* PaymentWebContainer.swift */; };
+		73A104532F2104CB00640BC7 /* RealPayBoxSDKService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 73A104522F2104CB00640BC7 /* RealPayBoxSDKService.swift */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXFileReference section */
+		73362BD42F2296FF00D09481 /* PayboxSDKStubs.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PayboxSDKStubs.swift; sourceTree = "<group>"; };
 		73A104302F20B91F00640BC7 /* car_rent.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = car_rent.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		73A1044A2F2101DC00640BC7 /* PaymentAPI.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PaymentAPI.swift; sourceTree = "<group>"; };
+		73A1044C2F2101DD00640BC7 /* PayBoxSDKService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PayBoxSDKService.swift; sourceTree = "<group>"; };
+		73A1044E2F2104C000640BC7 /* PayboxConfig.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PayboxConfig.swift; sourceTree = "<group>"; };
+		73A104502F2104C200640BC7 /* PaymentWebContainer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PaymentWebContainer.swift; sourceTree = "<group>"; };
+		73A104522F2104CB00640BC7 /* RealPayBoxSDKService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RealPayBoxSDKService.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -34,6 +49,12 @@
 			children = (
 				73A104322F20B91F00640BC7 /* car_rent */,
 				73A104312F20B91F00640BC7 /* Products */,
+				73A1044A2F2101DC00640BC7 /* PaymentAPI.swift */,
+				73A1044C2F2101DD00640BC7 /* PayBoxSDKService.swift */,
+				73A1044E2F2104C000640BC7 /* PayboxConfig.swift */,
+				73A104502F2104C200640BC7 /* PaymentWebContainer.swift */,
+				73A104522F2104CB00640BC7 /* RealPayBoxSDKService.swift */,
+				73362BD42F2296FF00D09481 /* PayboxSDKStubs.swift */,
 			);
 			sourceTree = "<group>";
 		};
@@ -119,6 +140,12 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				73A1044F2F2104C000640BC7 /* PayboxConfig.swift in Sources */,
+				73A104532F2104CB00640BC7 /* RealPayBoxSDKService.swift in Sources */,
+				73A104512F2104C200640BC7 /* PaymentWebContainer.swift in Sources */,
+				73362BD52F2296FF00D09481 /* PayboxSDKStubs.swift in Sources */,
+				73A1044B2F2101DC00640BC7 /* PaymentAPI.swift in Sources */,
+				73A1044D2F2101DD00640BC7 /* PayBoxSDKService.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
