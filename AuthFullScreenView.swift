@@ -15,9 +15,12 @@ struct AuthFullScreenView: View {
     @State private var errorMessage: String?
     @State private var successMessage: String?
 
+    // Новый флаг: требовать OTP после успешной регистрации/логина
+    @State private var requireOTP = false
+    @State private var otpPhoneMasked: String = ""
+
     var body: some View {
         ZStack {
-            // Общий градиент в стиле приложения
             LinearGradient(colors: [Color.black, Color.blue.opacity(0.35)],
                            startPoint: .topLeading,
                            endPoint: .bottomTrailing)
@@ -32,7 +35,6 @@ struct AuthFullScreenView: View {
                                 .fill(Color.white.opacity(0.06))
                                 .frame(width: 140, height: 140)
                                 .blur(radius: 2)
-                            // Замените на Image("car_hero") после добавления ассета
                             Image(systemName: "car.fill")
                                 .resizable()
                                 .scaledToFit()
@@ -50,7 +52,6 @@ struct AuthFullScreenView: View {
                     }
                     .padding(.top, 28)
 
-                    // Подзаголовок
                     VStack(spacing: 6) {
                         Text("Стиль. Мощь. Совершенство.")
                             .font(.title3).bold()
@@ -63,7 +64,6 @@ struct AuthFullScreenView: View {
                             .padding(.horizontal)
                     }
 
-                    // Переключатель Вход/Регистрация
                     Picker("", selection: $isSignUp) {
                         Text("Вход").tag(false)
                         Text("Регистрация").tag(true)
@@ -75,7 +75,7 @@ struct AuthFullScreenView: View {
                         successMessage = nil
                     }
 
-                    // Форма в “стеклянной” карточке
+                    // Форма
                     VStack(spacing: 14) {
                         if isSignUp {
                             TextField("Имя", text: $name)
@@ -153,7 +153,6 @@ struct AuthFullScreenView: View {
                             .padding(.horizontal)
                     }
 
-                    // Кнопка действия
                     Button {
                         submit()
                     } label: {
@@ -172,7 +171,6 @@ struct AuthFullScreenView: View {
                     .disabled(!isActionEnabled || isLoading)
                     .padding(.horizontal)
 
-                    // Юридический текст
                     Text("Нажимая «\(isSignUp ? "Зарегистрироваться" : "Войти")», вы соглашаетесь с Условиями оферты и Политикой конфиденциальности.")
                         .font(.footnote)
                         .foregroundStyle(.white.opacity(0.7))
@@ -182,8 +180,23 @@ struct AuthFullScreenView: View {
                 }
             }
         }
-        .interactiveDismissDisabled(true) // нельзя закрыть до авторизации
+        .interactiveDismissDisabled(true)
         .navigationBarHidden(true)
+        // Полнокрановый шаг OTP
+        .fullScreenCover(isPresented: $requireOTP) {
+            OtpVerificationView(
+                phoneMasked: otpPhoneMasked,
+                onCancel: {
+                    // Разрешим вернуться к форме (можно иначе — сделать недоступной отмену)
+                    requireOTP = false
+                },
+                onVerified: {
+                    // После успешной проверки OTP просто позволим ContentView закрыть авторизацию
+                    requireOTP = false
+                    // Ничего дополнительно не делаем — auth.isLoggedIn уже true после submit()
+                }
+            )
+        }
     }
 
     private var isActionEnabled: Bool {
@@ -229,17 +242,41 @@ struct AuthFullScreenView: View {
                                       password: password,
                                       phone: normalizedKZPhone(phone))
                     storedUserName = auth.currentUser?.name ?? ""
-                    successMessage = "Регистрация успешна! Добро пожаловать, \(storedUserName.isEmpty ? "водитель" : storedUserName)."
+                    successMessage = "Регистрация успешна!"
                 } else {
                     try auth.login(email: email, password: password)
                     storedUserName = auth.currentUser?.name ?? ""
                     successMessage = "Вход выполнен!"
                 }
-                // Закрытие экрана произойдёт автоматически, так как ContentView следит за auth.isLoggedIn
+
+                // 1) Маскируем телефон/email для подсказки на экране OTP
+                if isSignUp {
+                    otpPhoneMasked = maskedPhone(normalizedKZPhone(phone))
+                } else {
+                    otpPhoneMasked = maskedEmail(email)
+                }
+                // 2) Требуем OTP-подтверждение перед входом в приложение
+                requireOTP = true
+
             } catch {
                 errorMessage = (error as? LocalizedError)?.errorDescription ?? "Ошибка входа/регистрации."
             }
         }
+    }
+
+    private func maskedPhone(_ digits: String) -> String {
+        guard digits.count == 11 else { return digits }
+        let tail = String(digits.suffix(2))
+        return "+7 *** *** ** " + tail
+    }
+
+    private func maskedEmail(_ mail: String) -> String {
+        let parts = mail.split(separator: "@")
+        guard parts.count == 2 else { return mail }
+        let name = parts[0]
+        let domain = parts[1]
+        let maskedName = name.prefix(1) + "***"
+        return maskedName + "@" + domain
     }
 
     private func isValidEmail(_ email: String) -> Bool {
