@@ -4,33 +4,22 @@ import Combine
 import CryptoKit
 
 final class WalletStore: ObservableObject {
-    // Словарь балансов по пользователям: ключ — email (или "guest")
     @Published private(set) var balances: [String: Decimal] = [:] {
         didSet { saveBalances() }
     }
-
-    // Текущий пользователь (email) для отображения/изменения баланса
     @Published private(set) var currentEmail: String = "guest" {
         didSet { objectWillChange.send() }
     }
-
-    // Удобный доступ к текущему балансу
     var balanceKZT: Decimal {
         get { balances[currentEmail] ?? 0 }
         set { balances[currentEmail] = newValue }
     }
-
-    init() {
-        loadBalances()
-    }
+    init() { loadBalances() }
 
     func setCurrentUser(email: String?) {
         let key = (email?.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()).flatMap { $0.isEmpty ? nil : $0 } ?? "guest"
         currentEmail = key
-        // Если для нового пользователя нет записи — инициализируем нулём
-        if balances[currentEmail] == nil {
-            balances[currentEmail] = 0
-        }
+        if balances[currentEmail] == nil { balances[currentEmail] = 0 }
     }
 
     func updateBalance(by delta: Decimal) {
@@ -41,12 +30,9 @@ final class WalletStore: ObservableObject {
     private func loadBalances() {
         if let data = UserDefaults.standard.data(forKey: "wallet.balances.json"),
            let decoded = try? JSONDecoder().decode([String: String].self, from: data) {
-            // Храним как строки для стабильности Decimal
             var result: [String: Decimal] = [:]
             for (k, v) in decoded {
-                if let d = Decimal(string: v) {
-                    result[k] = d
-                }
+                if let d = Decimal(string: v) { result[k] = d }
             }
             balances = result
         } else {
@@ -55,7 +41,6 @@ final class WalletStore: ObservableObject {
     }
 
     private func saveBalances() {
-        // Сохраняем Decimal как строки
         let encoded: [String: String] = balances.mapValues { NSDecimalNumber(decimal: $0).stringValue }
         if let data = try? JSONEncoder().encode(encoded) {
             UserDefaults.standard.set(data, forKey: "wallet.balances.json")
@@ -63,10 +48,7 @@ final class WalletStore: ObservableObject {
     }
 }
 
-private struct IsLoggedInKey: EnvironmentKey {
-    static let defaultValue: Bool = false
-}
-
+private struct IsLoggedInKey: EnvironmentKey { static let defaultValue: Bool = false }
 extension EnvironmentValues {
     var isLoggedIn: Bool {
         get { self[IsLoggedInKey.self] }
@@ -74,10 +56,7 @@ extension EnvironmentValues {
     }
 }
 
-private struct ShowAuthKey: EnvironmentKey {
-    static let defaultValue: () -> Void = {}
-}
-
+private struct ShowAuthKey: EnvironmentKey { static let defaultValue: () -> Void = {} }
 extension EnvironmentValues {
     var showAuth: () -> Void {
         get { self[ShowAuthKey.self] }
@@ -91,7 +70,6 @@ enum AppLanguage: String, CaseIterable, Identifiable {
     case en = "en"
 
     var id: String { rawValue }
-
     var displayName: String {
         switch self {
         case .system: return "Системный"
@@ -99,7 +77,6 @@ enum AppLanguage: String, CaseIterable, Identifiable {
         case .en: return "English"
         }
     }
-
     var locale: Locale? {
         switch self {
         case .system: return nil
@@ -119,7 +96,7 @@ struct UserRecord: Codable, Equatable {
 }
 
 final class AuthStore: ObservableObject {
-    @Published private(set) var users: [String: UserRecord] = [:] // key = lowercased email
+    @Published private(set) var users: [String: UserRecord] = [:]
     @AppStorage("currentUserEmail") private var currentUserEmail: String = ""
     @Published private(set) var isLoggedIn: Bool = false
     @Published private(set) var currentUser: UserRecord?
@@ -133,9 +110,7 @@ final class AuthStore: ObservableObject {
 
     func register(name: String, email: String, password: String, phone: String) throws {
         let emailKey = emailKeyFor(email)
-        guard users[emailKey] == nil else {
-            throw AuthError.emailAlreadyExists
-        }
+        guard users[emailKey] == nil else { throw AuthError.emailAlreadyExists }
         let record = UserRecord(name: name, email: emailKey, passwordHash: Self.hash(password), phone: phone)
         users[emailKey] = record
         saveUsers()
@@ -144,12 +119,8 @@ final class AuthStore: ObservableObject {
 
     func login(email: String, password: String) throws {
         let emailKey = emailKeyFor(email)
-        guard let record = users[emailKey] else {
-            throw AuthError.userNotFound
-        }
-        guard record.passwordHash == Self.hash(password) else {
-            throw AuthError.wrongPassword
-        }
+        guard let record = users[emailKey] else { throw AuthError.userNotFound }
+        guard record.passwordHash == Self.hash(password) else { throw AuthError.wrongPassword }
         setLoggedIn(user: record)
     }
 
@@ -182,10 +153,9 @@ final class AuthStore: ObservableObject {
     }
 
     private func loadUsers() {
-        if let data = UserDefaults.standard.data(forKey: usersKey) {
-            if let decoded = try? JSONDecoder().decode([String: UserRecord].self, from: data) {
-                users = decoded
-            }
+        if let data = UserDefaults.standard.data(forKey: usersKey),
+           let decoded = try? JSONDecoder().decode([String: UserRecord].self, from: data) {
+            users = decoded
         }
     }
 
@@ -208,12 +178,9 @@ final class AuthStore: ObservableObject {
 
         var errorDescription: String? {
             switch self {
-            case .emailAlreadyExists:
-                return "Пользователь с таким e‑mail уже существует."
-            case .userNotFound:
-                return "Пользователь с таким e‑mail не найден."
-            case .wrongPassword:
-                return "Неверный пароль."
+            case .emailAlreadyExists: return "Пользователь с таким e‑mail уже существует."
+            case .userNotFound: return "Пользователь с таким e‑mail не найден."
+            case .wrongPassword: return "Неверный пароль."
             }
         }
     }
@@ -245,9 +212,7 @@ struct ContentView: View {
                     SplashView()
                         .onAppear {
                             DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
-                                withAnimation(.easeInOut(duration: 0.25)) {
-                                    showSplash = false
-                                }
+                                withAnimation(.easeInOut(duration: 0.25)) { showSplash = false }
                             }
                         }
                 } else {
@@ -266,37 +231,27 @@ struct ContentView: View {
                                     }
                                 }
                         }
-                        .tabItem {
-                            Label("Главная", systemImage: "map")
-                        }
+                        .tabItem { Label("Главная", systemImage: "map") }
 
                         NavigationStack {
                             BalanceView()
                                 .navigationTitle("Баланс")
                                 .navigationBarTitleDisplayMode(.inline)
                         }
-                        .tabItem {
-                            Label("Баланс", systemImage: "creditcard.fill")
-                        }
+                        .tabItem { Label("Баланс", systemImage: "creditcard.fill") }
 
                         NavigationStack {
                             SettingsView()
                                 .navigationTitle("Профиль")
                                 .navigationBarTitleDisplayMode(.inline)
                         }
-                        .tabItem {
-                            Label("Профиль", systemImage: "person.crop.circle")
-                        }
+                        .tabItem { Label("Профиль", systemImage: "person.crop.circle") }
                     }
                     .onAppear {
-                        // Установим пользователя для кошелька при запуске
                         wallet.setCurrentUser(email: auth.currentUser?.email)
-                        if !auth.isLoggedIn {
-                            showAuthFullScreen = true
-                        }
+                        if !auth.isLoggedIn { showAuthFullScreen = true }
                     }
                     .onChange(of: auth.isLoggedIn) { loggedIn in
-                        // При входе/выходе переключаем пользователя в кошельке
                         wallet.setCurrentUser(email: auth.currentUser?.email)
                         showAuthFullScreen = !loggedIn
                     }
@@ -354,18 +309,14 @@ struct SplashView: View {
                     .tint(.white.opacity(0.8))
             }
             .onAppear {
-                withAnimation(.spring(response: 0.6, dampingFraction: 0.8)) {
-                    scale = 1.0
-                }
-                withAnimation(.easeIn(duration: 0.35)) {
-                    opacity = 1.0
-                }
+                withAnimation(.spring(response: 0.6, dampingFraction: 0.8)) { scale = 1.0 }
+                withAnimation(.easeIn(duration: 0.35)) { opacity = 1.0 }
             }
         }
     }
 }
 
-// MARK: - Баланс, карта, профиль (без изменений логики, но баланс теперь берётся из WalletStore по текущему email)
+// MARK: - Баланс, карта, профиль
 
 struct BalanceView: View {
     @EnvironmentObject private var wallet: WalletStore
@@ -377,7 +328,6 @@ struct BalanceView: View {
     @State private var showAuthAlert = false
     @FocusState private var isTopUpFocused: Bool
 
-    // Моки оплаты
     @State private var paymentAPI = MockPaymentAPI()
     @State private var payboxService: PayBoxSDKService? = nil
     @State private var isPaying = false
@@ -389,10 +339,7 @@ struct BalanceView: View {
                     RoundedRectangle(cornerRadius: 20)
                         .fill(LinearGradient(colors: [Color.indigo.opacity(0.85), Color.blue.opacity(0.7)],
                                              startPoint: .topLeading, endPoint: .bottomTrailing))
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 20)
-                                .stroke(Color.white.opacity(0.12), lineWidth: 1)
-                        )
+                        .overlay(RoundedRectangle(cornerRadius: 20).stroke(Color.white.opacity(0.12), lineWidth: 1))
                     VStack(spacing: 8) {
                         Text("Текущий баланс")
                             .foregroundStyle(.white.opacity(0.85))
@@ -409,10 +356,7 @@ struct BalanceView: View {
                     .keyboardType(.numberPad)
                     .padding()
                     .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 14))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 14)
-                            .stroke(Color.white.opacity(0.12), lineWidth: 1)
-                    )
+                    .overlay(RoundedRectangle(cornerRadius: 14).stroke(Color.white.opacity(0.12), lineWidth: 1))
                     .padding(.horizontal)
                     .disabled(!isLoggedIn || isPaying)
                     .focused($isTopUpFocused)
@@ -494,13 +438,11 @@ struct BalanceView: View {
     private func topUpLocal() {
         errorMessage = nil
         successMessage = nil
-
         let digits = topUpText.filter { $0.isNumber }
         guard !digits.isEmpty, let amountInt = Int(digits), amountInt > 0 else {
             errorMessage = "Введите корректную сумму в тенге (только числа)."
             return
         }
-
         let amount = Decimal(amountInt)
         wallet.updateBalance(by: amount)
         successMessage = "Баланс пополнен на \(formatKZT(amount))."
@@ -514,9 +456,7 @@ struct BalanceView: View {
         return amountInt
     }
 
-    private func userId() -> String {
-        auth.currentUser?.email ?? "guest"
-    }
+    private func userId() -> String { auth.currentUser?.email ?? "guest" }
 
     private func payWithPayBox() async {
         errorMessage = nil
@@ -609,10 +549,8 @@ struct MainMapView: View {
 
     @State private var selectedCar: Car?
 
-    // ИИ-помощник
     @State private var showAI = false
 
-    // Быстрые вопросы
     private let quickQuestions = [
         "Как зарегистрироваться?",
         "Почему не приходит код?",
@@ -622,7 +560,7 @@ struct MainMapView: View {
     ]
 
     var body: some View {
-        ZStack(alignment: .top) {
+        ZStack(alignment: .bottom) {
             Map(coordinateRegion: $region, interactionModes: .all, showsUserLocation: false, userTrackingMode: nil, annotationItems: cars) { car in
                 MapAnnotation(coordinate: car.coordinate) {
                     VStack(spacing: 4) {
@@ -649,7 +587,7 @@ struct MainMapView: View {
             }
             .ignoresSafeArea(edges: .bottom)
 
-            VStack(spacing: 8) {
+            VStack(spacing: 10) {
                 HStack {
                     VStack(alignment: .leading, spacing: 4) {
                         Text("Добро пожаловать в")
@@ -665,40 +603,41 @@ struct MainMapView: View {
                 }
                 .padding()
                 .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 16))
-                .padding(.horizontal)
+                .overlay(RoundedRectangle(cornerRadius: 16).stroke(Color.white.opacity(0.15), lineWidth: 1))
 
-                // Кнопка ИИ-помощника и быстрые вопросы
-                VStack(spacing: 8) {
-                    Button {
-                        showAI = true
-                    } label: {
-                        Label("ИИ‑помощник", systemImage: "bubble.left.and.bubble.right.fill")
-                            .font(.headline)
-                            .frame(maxWidth: .infinity)
-                            .padding()
-                            .background(Color.purple.opacity(0.9))
-                            .foregroundStyle(.white)
-                            .clipShape(RoundedRectangle(cornerRadius: 14))
-                    }
+                Button {
+                    showAI = true
+                } label: {
+                    Label("ИИ‑помощник", systemImage: "bubble.left.and.bubble.right.fill")
+                        .font(.headline)
+                        .frame(maxWidth: .infinity)
+                        .padding()
+                        .background(Color.purple.opacity(0.9))
+                        .foregroundStyle(.white)
+                        .clipShape(RoundedRectangle(cornerRadius: 14))
+                }
 
-                    ScrollView(.horizontal, showsIndicators: false) {
-                        HStack(spacing: 8) {
-                            ForEach(quickQuestions, id: \.self) { q in
-                                Button(q) {
-                                    showAI = true
-                                    // При желании можно передать starterQuestion: q
-                                }
-                                .padding(.horizontal, 12)
-                                .padding(.vertical, 8)
-                                .background(.thinMaterial, in: Capsule())
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 8) {
+                        ForEach(quickQuestions, id: \.self) { q in
+                            Button(q) {
+                                showAI = true
+                                // при необходимости можно передать starterQuestion: q
                             }
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 8)
+                            .background(.thinMaterial, in: Capsule())
                         }
-                        .padding(.horizontal)
                     }
                 }
-                .padding(.horizontal)
             }
-            .padding(.top, 8)
+            .padding(.horizontal)
+            .padding(.vertical, 10)
+            .background(
+                LinearGradient(colors: [Color.black.opacity(0.0), Color.black.opacity(0.15)],
+                               startPoint: .top, endPoint: .bottom)
+                    .ignoresSafeArea(edges: .bottom)
+            )
         }
         .sheet(item: $selectedCar) { car in
             CarDetailsView(car: car)
@@ -870,6 +809,4 @@ private extension NumberFormatter {
     }()
 }
 
-#Preview {
-    ContentView()
-}
+#Preview { ContentView() }
