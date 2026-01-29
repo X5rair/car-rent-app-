@@ -17,6 +17,8 @@
 		73A1044F2F2104C000640BC7 /* PayboxConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = 73A1044E2F2104C000640BC7 /* PayboxConfig.swift */; };
 		73A104512F2104C200640BC7 /* PaymentWebContainer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 73A104502F2104C200640BC7 /* PaymentWebContainer.swift */; };
 		73A104532F2104CB00640BC7 /* RealPayBoxSDKService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 73A104522F2104CB00640BC7 /* RealPayBoxSDKService.swift */; };
+		73CA7F202F2B57C000D265E7 /* ChatLocalService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 73CA7F1F2F2B57C000D265E7 /* ChatLocalService.swift */; };
+		73CA7F222F2B57C200D265E7 /* ChatSheetView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 73CA7F212F2B57C200D265E7 /* ChatSheetView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -29,6 +31,8 @@
 		73A1044E2F2104C000640BC7 /* PayboxConfig.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PayboxConfig.swift; sourceTree = "<group>"; };
 		73A104502F2104C200640BC7 /* PaymentWebContainer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PaymentWebContainer.swift; sourceTree = "<group>"; };
 		73A104522F2104CB00640BC7 /* RealPayBoxSDKService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RealPayBoxSDKService.swift; sourceTree = "<group>"; };
+		73CA7F1F2F2B57C000D265E7 /* ChatLocalService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatLocalService.swift; sourceTree = "<group>"; };
+		73CA7F212F2B57C200D265E7 /* ChatSheetView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatSheetView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -73,6 +77,8 @@
 				7393B8192F28AD7700CF32A4 /* AuthFullScreenView.swift */,
 				7393B81D2F28B61D00CF32A4 /* GoogleService-Info.plist */,
 				7393B8202F28BBB800CF32A4 /* Frameworks */,
+				73CA7F1F2F2B57C000D265E7 /* ChatLocalService.swift */,
+				73CA7F212F2B57C200D265E7 /* ChatSheetView.swift */,
 			);
 			sourceTree = "<group>";
 		};
@@ -166,6 +172,8 @@
 			files = (
 				73A1044F2F2104C000640BC7 /* PayboxConfig.swift in Sources */,
 				73A104532F2104CB00640BC7 /* RealPayBoxSDKService.swift in Sources */,
+				73CA7F202F2B57C000D265E7 /* ChatLocalService.swift in Sources */,
+				73CA7F222F2B57C200D265E7 /* ChatSheetView.swift in Sources */,
 				73A104512F2104C200640BC7 /* PaymentWebContainer.swift in Sources */,
 				73362BD52F2296FF00D09481 /* PayboxSDKStubs.swift in Sources */,
 				73A1044B2F2101DC00640BC7 /* PaymentAPI.swift in Sources */,

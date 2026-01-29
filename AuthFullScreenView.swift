@@ -20,6 +20,9 @@ struct AuthFullScreenView: View {
     @State private var requireOTP = false
     @State private var otpPhoneMasked: String = ""
 
+    // ИИ-помощник
+    @State private var showAI = false
+
     var body: some View {
         ZStack {
             LinearGradient(colors: [Color.black, Color.blue.opacity(0.35)],
@@ -172,6 +175,20 @@ struct AuthFullScreenView: View {
                     .disabled(!isActionEnabled || isLoading)
                     .padding(.horizontal)
 
+                    // Кнопка ИИ‑помощника
+                    Button {
+                        showAI = true
+                    } label: {
+                        Label("Спросить ИИ", systemImage: "bubble.left.and.bubble.right.fill")
+                            .fontWeight(.semibold)
+                            .frame(maxWidth: .infinity)
+                            .padding()
+                            .background(Color.purple.opacity(0.85))
+                            .foregroundStyle(.white)
+                            .clipShape(RoundedRectangle(cornerRadius: 14))
+                    }
+                    .padding(.horizontal)
+
                     Text("Нажимая «\(isSignUp ? "Зарегистрироваться" : "Войти")», вы соглашаетесь с Условиями оферты и Политикой конфиденциальности.")
                         .font(.footnote)
                         .foregroundStyle(.white.opacity(0.7))
@@ -194,6 +211,10 @@ struct AuthFullScreenView: View {
                     requireOTP = false
                 }
             )
+        }
+        // Чат ИИ
+        .sheet(isPresented: $showAI) {
+            ChatSheetView(initialContext: aiContext())
         }
     }
 
@@ -311,4 +332,21 @@ struct AuthFullScreenView: View {
         let g4 = chunk(8, 2); if !g4.isEmpty { result += " " + g4 }
         return result
     }
+
+    // Собираем безопасный контекст для ИИ
+    private func aiContext() -> [String: String] {
+        var ctx: [String: String] = [:]
+        ctx["mode"] = isSignUp ? "registration" : "login"
+        ctx["emailValid"] = isValidEmail(email) ? "yes" : "no"
+        if isSignUp {
+            ctx["nameProvided"] = name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "no" : "yes"
+            ctx["phoneValid"] = isValidKZPhone(phone) ? "yes" : "no"
+        }
+        if let errorMessage { ctx["lastError"] = errorMessage }
+        // Телефон маскируем
+        let digits = normalizedKZPhone(phone)
+        ctx["phoneMasked"] = maskedPhone(digits)
+        return ctx
+    }
 }
+
