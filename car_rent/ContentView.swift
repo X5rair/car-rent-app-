@@ -609,6 +609,18 @@ struct MainMapView: View {
 
     @State private var selectedCar: Car?
 
+    // ИИ-помощник
+    @State private var showAI = false
+
+    // Быстрые вопросы
+    private let quickQuestions = [
+        "Как зарегистрироваться?",
+        "Почему не приходит код?",
+        "Как пополнить баланс?",
+        "Какой формат телефона?",
+        "Не получается войти"
+    ]
+
     var body: some View {
         ZStack(alignment: .top) {
             Map(coordinateRegion: $region, interactionModes: .all, showsUserLocation: false, userTrackingMode: nil, annotationItems: cars) { car in
@@ -655,24 +667,34 @@ struct MainMapView: View {
                 .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 16))
                 .padding(.horizontal)
 
-                HStack(spacing: 12) {
+                // Кнопка ИИ-помощника и быстрые вопросы
+                VStack(spacing: 8) {
                     Button {
-                        region = MKCoordinateRegion(center: almaty, span: MKCoordinateSpan(latitudeDelta: 0.08, longitudeDelta: 0.08))
+                        showAI = true
                     } label: {
-                        Label("Алматы", systemImage: "mappin.circle.fill")
-                            .padding(.horizontal, 12).padding(.vertical, 8)
-                            .background(.thinMaterial, in: Capsule())
+                        Label("ИИ‑помощник", systemImage: "bubble.left.and.bubble.right.fill")
+                            .font(.headline)
+                            .frame(maxWidth: .infinity)
+                            .padding()
+                            .background(Color.purple.opacity(0.9))
+                            .foregroundStyle(.white)
+                            .clipShape(RoundedRectangle(cornerRadius: 14))
                     }
 
-                    Button {
-                        region = MKCoordinateRegion(center: newYork, span: MKCoordinateSpan(latitudeDelta: 0.08, longitudeDelta: 0.08))
-                    } label: {
-                        Label("Нью‑Йорк", systemImage: "airplane")
-                            .padding(.horizontal, 12).padding(.vertical, 8)
-                            .background(.thinMaterial, in: Capsule())
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: 8) {
+                            ForEach(quickQuestions, id: \.self) { q in
+                                Button(q) {
+                                    showAI = true
+                                    // При желании можно передать starterQuestion: q
+                                }
+                                .padding(.horizontal, 12)
+                                .padding(.vertical, 8)
+                                .background(.thinMaterial, in: Capsule())
+                            }
+                        }
+                        .padding(.horizontal)
                     }
-
-                    Spacer()
                 }
                 .padding(.horizontal)
             }
@@ -681,6 +703,16 @@ struct MainMapView: View {
         .sheet(item: $selectedCar) { car in
             CarDetailsView(car: car)
                 .presentationDetents([.medium])
+        }
+        .sheet(isPresented: $showAI) {
+            ChatSheetView(
+                initialContext: [
+                    "mode": "main",
+                    "info": "Главный экран, помощь по регистрации/входу/балансу/тарифам"
+                ],
+                starterQuestion: nil,
+                quickQuestions: quickQuestions
+            )
         }
     }
 }
